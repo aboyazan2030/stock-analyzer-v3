@@ -126,8 +126,29 @@ def fetch_stock(ticker):
 def fetch_news(ticker):
     try:
         stk=yf.Ticker(ticker)
-        news=stk.news
-        return news[:10] if news else []
+        raw=stk.news
+        if not raw: return []
+        cleaned=[]
+        for item in raw[:10]:
+            if not isinstance(item,dict): continue
+            content=item.get("content",item)
+            if not isinstance(content,dict): content=item
+            title=(content.get("title") or item.get("title") or "").strip()
+            link=(content.get("canonicalUrl",{}).get("url","") or
+                  content.get("clickThroughUrl",{}).get("url","") or
+                  item.get("link","") or item.get("url","") or "")
+            provider=content.get("provider",{})
+            if not isinstance(provider,dict): provider={}
+            publisher=(provider.get("displayName","") or item.get("publisher","") or "")
+            pub_time=content.get("pubDate","") or str(item.get("providerPublishTime","") or "")
+            try:
+                if pub_time and str(pub_time).isdigit(): pub_ts=int(pub_time)
+                elif pub_time: pub_ts=int(datetime.fromisoformat(str(pub_time).replace("Z","+00:00")).timestamp())
+                else: pub_ts=0
+            except: pub_ts=0
+            if title:
+                cleaned.append({"title":title,"link":link,"publisher":publisher,"providerPublishTime":pub_ts})
+        return cleaned
     except: return []
 
 def compute_tech(hist):
@@ -247,9 +268,7 @@ def decide(fs,ts,vs,disc):
 
 def detect_signals(df):
     buy_idx=[]; sell_idx=[]
-    rsi=df["RSI"].values
-    macd=df["MACD"].values
-    macd_s=df["MACD_S"].values
+    rsi=df["RSI"].values; macd=df["MACD"].values; macd_s=df["MACD_S"].values
     for i in range(1,len(df)):
         try:
             rsi_ok=not np.isnan(rsi[i]) and rsi[i]<40
@@ -476,7 +495,8 @@ def page_analysis():
             sc={"pos":"#3fb950","neg":"#f85149","neu":"#d29922"}
             sl={"pos":"إيجابي 🟢","neg":"سلبي 🔴","neu":"محايد 🟡"}
             for item in news:
-                title=item.get("title","بدون عنوان")
+                title=item.get("title","")
+                if not title: continue
                 pub=item.get("providerPublishTime",0)
                 link=item.get("link","") or ""
                 publisher=item.get("publisher","") or ""
