@@ -8,11 +8,7 @@ from datetime import datetime, timedelta
 import warnings, io, json, time
 warnings.filterwarnings('ignore')
 
-st.set_page_config(
-    page_title="محلل الأسهم الذكي Pro v3",
-    page_icon="📈", layout="wide",
-    initial_sidebar_state="collapsed"
-)
+st.set_page_config(page_title="محلل الأسهم الذكي Pro v3",page_icon="📈",layout="wide",initial_sidebar_state="collapsed")
 
 st.markdown("""
 <style>
@@ -66,25 +62,14 @@ footer,#MainMenu,.stDeployButton{display:none!important;}
 </style>
 """, unsafe_allow_html=True)
 
-MARKETS = {
-    "🇸🇦 السوق السعودي (TASI)":"SA",
-    "🇺🇸 السوق الأمريكي (NYSE/NASDAQ)":"US",
-    "🇬🇧 السوق البريطاني (LSE)":"UK",
-    "🇩🇪 السوق الألماني (XETRA)":"DE",
-    "🇯🇵 السوق الياباني (TSE)":"JP",
-    "🇭🇰 هونغ كونغ (HKEX)":"HK",
-    "🇫🇷 السوق الفرنسي (Euronext)":"FR",
-    "🇨🇦 السوق الكندي (TSX)":"CA",
-    "🇦🇺 السوق الأسترالي (ASX)":"AU",
-    "🇨🇳 السوق الصيني (Shanghai)":"CN",
-}
+MARKETS={"🇸🇦 السوق السعودي (TASI)":"SA","🇺🇸 السوق الأمريكي (NYSE/NASDAQ)":"US","🇬🇧 السوق البريطاني (LSE)":"UK","🇩🇪 السوق الألماني (XETRA)":"DE","🇯🇵 السوق الياباني (TSE)":"JP","🇭🇰 هونغ كونغ (HKEX)":"HK","🇫🇷 السوق الفرنسي (Euronext)":"FR","🇨🇦 السوق الكندي (TSX)":"CA","🇦🇺 السوق الأسترالي (ASX)":"AU","🇨🇳 السوق الصيني (Shanghai)":"CN"}
 SUFFIX={"SA":".SR","US":"","UK":".L","DE":".DE","JP":".T","HK":".HK","FR":".PA","CA":".TO","AU":".AX","CN":".SS"}
 CHART_BG=dict(paper_bgcolor="#0d1117",plot_bgcolor="#0d1117",font=dict(color="#e6edf3",family="Cairo"),xaxis=dict(gridcolor="#21262d",showgrid=True,zeroline=False),yaxis=dict(gridcolor="#21262d",showgrid=True,zeroline=False),margin=dict(l=8,r=8,t=36,b=8),legend=dict(bgcolor="rgba(0,0,0,0)"))
 
 def init_state():
     if "portfolio" not in st.session_state: st.session_state.portfolio=[]
-    if "alerts"    not in st.session_state: st.session_state.alerts=[]
-    if "history"   not in st.session_state: st.session_state.history=[]
+    if "alerts" not in st.session_state: st.session_state.alerts=[]
+    if "history" not in st.session_state: st.session_state.history=[]
     if "watchlist" not in st.session_state: st.session_state.watchlist=[]
 init_state()
 
@@ -102,8 +87,8 @@ def fmt(n,s=""):
         n=float(n)
         if np.isnan(n): return "—"
         if abs(n)>=1e12: return f"{n/1e12:.2f}T{s}"
-        if abs(n)>=1e9:  return f"{n/1e9:.2f}B{s}"
-        if abs(n)>=1e6:  return f"{n/1e6:.2f}M{s}"
+        if abs(n)>=1e9: return f"{n/1e9:.2f}B{s}"
+        if abs(n)>=1e6: return f"{n/1e6:.2f}M{s}"
         return f"{n:,.2f}{s}"
     except: return "—"
 
@@ -127,8 +112,7 @@ def sbadge(val,hi,lo):
         return badge("متوسط","yellow")
     except: return badge("—","blue")
 
-def get_ticker(sym,mc):
-    return f"{sym.upper()}{SUFFIX.get(mc,'')}"
+def get_ticker(sym,mc): return f"{sym.upper()}{SUFFIX.get(mc,'')}"
 
 def fetch_stock(ticker):
     try:
@@ -190,8 +174,7 @@ def analyze_tech(df,sup,res,price):
     if bb_l and price<bb_l: bbs="أسفل البولينجر 🟢"; score+=1
     elif bb_u and price>bb_u: bbs="أعلى البولينجر 🔴"; score-=1
     else: bbs="داخل النطاق 🟡"
-    closes=df["Close"].tail(20).values
-    patterns=[]
+    closes=df["Close"].tail(20).values; patterns=[]
     if len(closes)>=6 and all(closes[i]<closes[i+1] for i in range(len(closes)-6,len(closes)-1)): patterns.append("زخم صاعد قوي")
     if len(closes)>=6 and all(closes[i]>closes[i+1] for i in range(len(closes)-6,len(closes)-1)): patterns.append("زخم هابط قوي")
     if not patterns: patterns.append("لا توجد أنماط واضحة")
@@ -264,51 +247,49 @@ def decide(fs,ts,vs,disc):
 
 def detect_signals(df):
     buy_idx=[]; sell_idx=[]
-    closes=df["Close"].values
     rsi=df["RSI"].values
     macd=df["MACD"].values
     macd_s=df["MACD_S"].values
     for i in range(1,len(df)):
         try:
             rsi_ok=not np.isnan(rsi[i]) and rsi[i]<40
-            macd_cross_up=(not np.isnan(macd[i]) and not np.isnan(macd_s[i]) and not np.isnan(macd[i-1]) and not np.isnan(macd_s[i-1]) and macd[i]>macd_s[i] and macd[i-1]<=macd_s[i-1])
-            if rsi_ok and macd_cross_up: buy_idx.append(i)
+            macd_up=(not np.isnan(macd[i]) and not np.isnan(macd_s[i]) and not np.isnan(macd[i-1]) and not np.isnan(macd_s[i-1]) and macd[i]>macd_s[i] and macd[i-1]<=macd_s[i-1])
+            if rsi_ok and macd_up: buy_idx.append(i)
             rsi_sell=not np.isnan(rsi[i]) and rsi[i]>65
-            macd_cross_dn=(not np.isnan(macd[i]) and not np.isnan(macd_s[i]) and not np.isnan(macd[i-1]) and not np.isnan(macd_s[i-1]) and macd[i]<macd_s[i] and macd[i-1]>=macd_s[i-1])
-            if rsi_sell and macd_cross_dn: sell_idx.append(i)
+            macd_dn=(not np.isnan(macd[i]) and not np.isnan(macd_s[i]) and not np.isnan(macd[i-1]) and not np.isnan(macd_s[i-1]) and macd[i]<macd_s[i] and macd[i-1]>=macd_s[i-1])
+            if rsi_sell and macd_dn: sell_idx.append(i)
         except: pass
     return buy_idx,sell_idx
 
 def chart_price(df,ticker,sup,res,price=None,sl=None,t1=None,t2=None):
     fig=make_subplots(rows=3,cols=1,shared_xaxes=True,row_heights=[0.55,0.25,0.20],vertical_spacing=0.03)
     fig.add_trace(go.Candlestick(x=df.index,open=df["Open"],high=df["High"],low=df["Low"],close=df["Close"],increasing_line_color="#3fb950",decreasing_line_color="#f85149",increasing_fillcolor="#3fb950",decreasing_fillcolor="#f85149",name="الشمعة"),row=1,col=1)
-    for col_name,nm,c in [("MA20","MA20","#f0883e"),("MA50","MA50","#58a6ff"),("MA200","MA200","#bc8cff")]:
-        fig.add_trace(go.Scatter(x=df.index,y=df[col_name],line=dict(color=c,width=1.5),name=nm,opacity=0.85),row=1,col=1)
+    for cn,nm,c in [("MA20","MA20","#f0883e"),("MA50","MA50","#58a6ff"),("MA200","MA200","#bc8cff")]:
+        fig.add_trace(go.Scatter(x=df.index,y=df[cn],line=dict(color=c,width=1.5),name=nm,opacity=0.85),row=1,col=1)
     fig.add_trace(go.Scatter(x=df.index,y=df["BB_U"],line=dict(color="#444c56",width=1,dash="dot"),showlegend=False),row=1,col=1)
     fig.add_trace(go.Scatter(x=df.index,y=df["BB_L"],line=dict(color="#444c56",width=1,dash="dot"),fill="tonexty",fillcolor="rgba(88,166,255,0.04)",showlegend=False),row=1,col=1)
-    fig.add_hline(y=sup,line_dash="dot",line_color="#3fb950",line_width=1.5,annotation_text=f"🟢 دعم {sup:.2f}",annotation_font_color="#3fb950",row=1,col=1)
-    fig.add_hline(y=res,line_dash="dot",line_color="#f85149",line_width=1.5,annotation_text=f"🔴 مقاومة {res:.2f}",annotation_font_color="#f85149",row=1,col=1)
+    fig.add_hline(y=sup,line_dash="dot",line_color="#3fb950",line_width=1.5,annotation_text=f"دعم {sup:.2f}",annotation_font_color="#3fb950",row=1,col=1)
+    fig.add_hline(y=res,line_dash="dot",line_color="#f85149",line_width=1.5,annotation_text=f"مقاومة {res:.2f}",annotation_font_color="#f85149",row=1,col=1)
     buy_idx,sell_idx=detect_signals(df)
     dates=df.index.tolist(); lows=df["Low"].values; highs=df["High"].values
     if buy_idx:
         fig.add_trace(go.Scatter(x=[dates[i] for i in buy_idx],y=[lows[i]*0.985 for i in buy_idx],mode="markers+text",marker=dict(symbol="triangle-up",size=14,color="#3fb950",line=dict(color="#ffffff",width=1)),text=["شراء"]*len(buy_idx),textposition="bottom center",textfont=dict(color="#3fb950",size=9),name="إشارة شراء 🟢"),row=1,col=1)
     if sell_idx:
         fig.add_trace(go.Scatter(x=[dates[i] for i in sell_idx],y=[highs[i]*1.015 for i in sell_idx],mode="markers+text",marker=dict(symbol="triangle-down",size=14,color="#f85149",line=dict(color="#ffffff",width=1)),text=["بيع"]*len(sell_idx),textposition="top center",textfont=dict(color="#f85149",size=9),name="إشارة بيع 🔴"),row=1,col=1)
-    recent_start=df.index[-90] if len(df)>=90 else df.index[0]
-    recent_end=df.index[-1]
+    rs=df.index[-90] if len(df)>=90 else df.index[0]; re=df.index[-1]
     if sl:
-        fig.add_shape(type="rect",x0=recent_start,x1=recent_end,y0=sl*0.998,y1=sl,fillcolor="rgba(248,81,73,0.12)",line_color="#f85149",line_width=0,row=1,col=1)
-        fig.add_annotation(x=recent_end,y=sl,text=f"⛔ وقف خسارة {sl:.2f}",font=dict(color="#f85149",size=9),showarrow=False,xanchor="right",bgcolor="rgba(15,17,23,0.7)",row=1,col=1)
+        fig.add_shape(type="rect",x0=rs,x1=re,y0=sl*0.998,y1=sl,fillcolor="rgba(248,81,73,0.12)",line_color="#f85149",line_width=0,row=1,col=1)
+        fig.add_annotation(x=re,y=sl,text=f"⛔ وقف خسارة {sl:.2f}",font=dict(color="#f85149",size=9),showarrow=False,xanchor="right",bgcolor="rgba(15,17,23,0.7)",row=1,col=1)
     if t1:
-        fig.add_shape(type="line",x0=recent_start,x1=recent_end,y0=t1,y1=t1,line=dict(color="#58a6ff",width=1.5,dash="dashdot"),row=1,col=1)
-        fig.add_annotation(x=recent_end,y=t1,text=f"🎯 هدف 1: {t1:.2f}",font=dict(color="#58a6ff",size=9),showarrow=False,xanchor="right",bgcolor="rgba(15,17,23,0.7)",row=1,col=1)
+        fig.add_shape(type="line",x0=rs,x1=re,y0=t1,y1=t1,line=dict(color="#58a6ff",width=1.5,dash="dashdot"),row=1,col=1)
+        fig.add_annotation(x=re,y=t1,text=f"🎯 هدف 1: {t1:.2f}",font=dict(color="#58a6ff",size=9),showarrow=False,xanchor="right",bgcolor="rgba(15,17,23,0.7)",row=1,col=1)
     if t2:
-        fig.add_shape(type="line",x0=recent_start,x1=recent_end,y0=t2,y1=t2,line=dict(color="#bc8cff",width=1.5,dash="dashdot"),row=1,col=1)
-        fig.add_annotation(x=recent_end,y=t2,text=f"🎯 هدف 2: {t2:.2f}",font=dict(color="#bc8cff",size=9),showarrow=False,xanchor="right",bgcolor="rgba(15,17,23,0.7)",row=1,col=1)
+        fig.add_shape(type="line",x0=rs,x1=re,y0=t2,y1=t2,line=dict(color="#bc8cff",width=1.5,dash="dashdot"),row=1,col=1)
+        fig.add_annotation(x=re,y=t2,text=f"🎯 هدف 2: {t2:.2f}",font=dict(color="#bc8cff",size=9),showarrow=False,xanchor="right",bgcolor="rgba(15,17,23,0.7)",row=1,col=1)
     if price:
-        buy_lo=sup if sup<price else price*0.97; buy_hi=price*1.02
-        fig.add_shape(type="rect",x0=recent_start,x1=recent_end,y0=buy_lo,y1=buy_hi,fillcolor="rgba(63,185,80,0.07)",line_color="rgba(63,185,80,0.3)",line_width=1,row=1,col=1)
-        fig.add_annotation(x=recent_start,y=(buy_lo+buy_hi)/2,text="✅ منطقة شراء",font=dict(color="#3fb950",size=9),showarrow=False,xanchor="left",bgcolor="rgba(15,17,23,0.7)",row=1,col=1)
+        bl=sup if sup<price else price*0.97; bh=price*1.02
+        fig.add_shape(type="rect",x0=rs,x1=re,y0=bl,y1=bh,fillcolor="rgba(63,185,80,0.07)",line_color="rgba(63,185,80,0.3)",line_width=1,row=1,col=1)
+        fig.add_annotation(x=rs,y=(bl+bh)/2,text="✅ منطقة شراء",font=dict(color="#3fb950",size=9),showarrow=False,xanchor="left",bgcolor="rgba(15,17,23,0.7)",row=1,col=1)
     colors=["#3fb950" if c>=o else "#f85149" for c,o in zip(df["Close"],df["Open"])]
     fig.add_trace(go.Bar(x=df.index,y=df["Volume"],marker_color=colors,name="الحجم",opacity=0.7),row=2,col=1)
     fig.add_trace(go.Scatter(x=df.index,y=df["RSI"],line=dict(color="#d29922",width=1.5),name="RSI"),row=3,col=1)
@@ -316,7 +297,9 @@ def chart_price(df,ticker,sup,res,price=None,sl=None,t1=None,t2=None):
     fig.add_hrect(y0=0,y1=30,fillcolor="rgba(63,185,80,0.07)",line_width=0,row=3,col=1)
     fig.add_hline(y=70,line_dash="dash",line_color="#f85149",line_width=1,annotation_text="تشبع شرائي",annotation_font_color="#f85149",row=3,col=1)
     fig.add_hline(y=30,line_dash="dash",line_color="#3fb950",line_width=1,annotation_text="تشبع بيعي",annotation_font_color="#3fb950",row=3,col=1)
-    fig.update_layout(title=dict(text=f"📊 {ticker} — الشموع اليابانية مع إشارات التداول",font=dict(size=14,color="#e6edf3")),height=700,xaxis_rangeslider_visible=False,legend=dict(orientation="h",yanchor="bottom",y=1.01,xanchor="right",x=1,bgcolor="rgba(0,0,0,0)",font=dict(size=9)),**CHART_BG)
+    fig.update_layout(title=dict(text=f"📊 {ticker} — الشموع اليابانية مع إشارات التداول",font=dict(size=14,color="#e6edf3")),height=700,xaxis_rangeslider_visible=False,paper_bgcolor="#0d1117",plot_bgcolor="#0d1117",font=dict(color="#e6edf3",family="Cairo"),margin=dict(l=8,r=8,t=50,b=8),legend=dict(orientation="h",yanchor="bottom",y=1.01,xanchor="right",x=1,bgcolor="rgba(0,0,0,0)",font=dict(size=9)))
+    fig.update_xaxes(gridcolor="#21262d",showgrid=True,zeroline=False)
+    fig.update_yaxes(gridcolor="#21262d",showgrid=True,zeroline=False)
     return fig
 
 def chart_macd(df):
@@ -362,21 +345,21 @@ def ai_forecast(hist,price):
         return dict(ret_1m=ret_1m,ret_3m=ret_3m,ret_6m=ret_6m,vol=vol_ann,outlook=outlook,target=target,score=score)
     except: return None
 
-def generate_report_text(ticker,name,price,cur,verdict,conf,tech,fund,fv,iv,disc,forecast):
-    lines=[f"{'='*60}","  تقرير تحليل السهم — محلل الأسهم الذكي Pro v3",f"{'='*60}",f"السهم: {ticker} — {name}",f"السعر: {price:,.2f} {cur}",f"التاريخ: {datetime.now().strftime('%Y-%m-%d %H:%M')}",f"{'─'*60}",f"التوصية: {verdict}  |  الثقة: {conf}%",f"{'─'*60}","التحليل الفني:",f"  الاتجاه: {tech['trend']}",f"  RSI: {tech['rsi']:.1f}" if tech['rsi'] else "  RSI: —",f"  MACD: {tech['ms']}",f"  الدعم: {tech['sup']:,.2f}",f"  المقاومة: {tech['res']:,.2f}",f"{'─'*60}","التحليل الأساسي:",f"  ROE: {pct(fund['roe'])}",f"  ROA: {pct(fund['roa'])}",f"  نمو الإيرادات: {pct(fund['rg'])}",f"  P/E: {fmt(fund['pe'],'x')}",f"{'─'*60}","التقييم:",f"  السعر العادل: {fv:,.2f} {cur}" if fv else "  السعر العادل: —",f"  الخصم: {disc*100:+.1f}%" if disc else "  الخصم: —",f"{'─'*60}","AI:",f"  التوقعات: {forecast['outlook']}" if forecast else "  —",f"  الهدف: {forecast['target']:,.2f}" if forecast else "  —",f"{'='*60}","تنبيه: لأغراض تعليمية فقط.",f"{'='*60}"]
+def generate_report(ticker,name,price,cur,verdict,conf,tech,fund,fv,iv,disc,forecast):
+    lines=[f"{'='*60}","  تقرير تحليل السهم — محلل الأسهم الذكي Pro v3",f"{'='*60}",f"السهم: {ticker} — {name}",f"السعر: {price:,.2f} {cur}",f"التاريخ: {datetime.now().strftime('%Y-%m-%d %H:%M')}",f"{'─'*60}",f"التوصية: {verdict}  |  الثقة: {conf}%",f"{'─'*60}","التحليل الفني:",f"  الاتجاه: {tech['trend']}",f"  RSI: {tech['rsi']:.1f}" if tech['rsi'] else "  RSI: —",f"  MACD: {tech['ms']}",f"  الدعم: {tech['sup']:,.2f}",f"  المقاومة: {tech['res']:,.2f}",f"{'─'*60}","التحليل الأساسي:",f"  ROE: {pct(fund['roe'])}",f"  ROA: {pct(fund['roa'])}",f"  نمو الإيرادات: {pct(fund['rg'])}",f"  P/E: {fmt(fund['pe'],'x')}",f"{'─'*60}","التقييم:",f"  السعر العادل: {fv:,.2f} {cur}" if fv else "  —",f"  الخصم: {disc*100:+.1f}%" if disc else "  —",f"{'─'*60}","AI:",f"  التوقعات: {forecast['outlook']}" if forecast else "  —",f"  الهدف: {forecast['target']:,.2f}" if forecast else "  —",f"{'='*60}","تنبيه: لأغراض تعليمية فقط.",f"{'='*60}"]
     return "\n".join(lines)
 
-def check_alerts(current_price,ticker):
+def check_alerts(price,ticker):
     triggered=[]
     for a in st.session_state.alerts:
         if a["ticker"]==ticker:
-            if a["type"]=="أعلى من" and current_price>=a["price"]: triggered.append(a)
-            elif a["type"]=="أقل من" and current_price<=a["price"]: triggered.append(a)
+            if a["type"]=="أعلى من" and price>=a["price"]: triggered.append(a)
+            elif a["type"]=="أقل من" and price<=a["price"]: triggered.append(a)
     return triggered
 
 def page_analysis():
     c1,c2,c3=st.columns([3,2,2])
-    with c1: sym=st.text_input("🔎 رمز السهم",placeholder="مثال: 2222 | AAPL | 7203")
+    with c1: sym=st.text_input("🔎 رمز السهم",placeholder="2222 | AAPL | 7203")
     with c2: mkt=st.selectbox("🌍 السوق",list(MARKETS.keys()))
     with c3:
         st.markdown("<br>",unsafe_allow_html=True)
@@ -394,7 +377,7 @@ def page_analysis():
     with st.spinner(f"⏳ جارٍ جلب بيانات {ticker}…"):
         info,hist,stk=fetch_stock(ticker)
     if info is None or hist is None or hist.empty:
-        st.error(f"❌ لم يُعثر على بيانات للرمز **{ticker}**"); return
+        st.error(f"❌ لم يُعثر على بيانات للرمز {ticker}"); return
     price=safe(info,"currentPrice") or safe(info,"regularMarketPrice")
     if not price:
         try: price=float(hist["Close"].iloc[-1])
@@ -410,150 +393,130 @@ def page_analysis():
     verdict,vcss,vcol,conf,reason=decide(fund["score"],tech["score"],vs,disc)
     forecast=ai_forecast(hist,price)
     st.session_state.history.append({"ticker":ticker,"name":name,"price":price,"cur":cur,"verdict":verdict,"conf":conf,"time":datetime.now().strftime("%Y-%m-%d %H:%M")})
-    triggered=check_alerts(price,ticker)
-    for a in triggered:
+    for a in check_alerts(price,ticker):
         st.warning(f"🔔 تنبيه: {ticker} وصل {price:,.2f} ({a['type']} {a['price']:,.2f})")
     prev=float(hist["Close"].iloc[-2]) if len(hist)>1 else price
     chg=price-prev; chgp=chg/prev*100
     st.markdown(f"""<div class="card" style="border-color:{vcol}">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.8rem">
-        <div>
-          <div style="font-size:1.3rem;font-weight:900;color:{vcol}">{ticker}</div>
+        <div><div style="font-size:1.3rem;font-weight:900;color:{vcol}">{ticker}</div>
           <div style="color:#8b949e;font-size:.88rem">{name}</div>
-          <div style="font-size:.75rem;color:#8b949e;margin-top:.2rem">🕐 {datetime.now().strftime('%Y-%m-%d %H:%M')}</div>
-        </div>
+          <div style="font-size:.75rem;color:#8b949e">🕐 {datetime.now().strftime('%Y-%m-%d %H:%M')}</div></div>
         <div style="text-align:center">
           <div style="font-size:2.6rem;font-weight:900;color:{vcol}">{price:,.2f}</div>
           <div style="color:#8b949e;font-size:.82rem">{cur}</div>
-          <div style="color:{'#3fb950' if chg>=0 else '#f85149'};font-size:.9rem;font-weight:700">{'▲' if chg>=0 else '▼'} {abs(chg):,.2f} ({abs(chgp):.2f}%)</div>
-        </div>
+          <div style="color:{'#3fb950' if chg>=0 else '#f85149'};font-size:.9rem;font-weight:700">{'▲' if chg>=0 else '▼'} {abs(chg):,.2f} ({abs(chgp):.2f}%)</div></div>
         <div style="text-align:center">
           <div style="font-size:.72rem;color:#8b949e">التوصية</div>
           <div style="font-size:1.3rem;font-weight:900;color:{vcol}">{verdict}</div>
-          <div style="font-size:.72rem;color:#8b949e">ثقة {conf}%</div>
-        </div>
+          <div style="font-size:.72rem;color:#8b949e">ثقة {conf}%</div></div>
       </div></div>""",unsafe_allow_html=True)
     w52h=safe(info,"fiftyTwoWeekHigh"); w52l=safe(info,"fiftyTwoWeekLow")
     vol=safe(info,"volume") or safe(info,"regularMarketVolume")
-    mcap=safe(info,"marketCap"); pe=safe(info,"trailingPE")
-    div_y=safe(info,"dividendYield"); beta=safe(info,"beta")
+    mcap=safe(info,"marketCap"); pe=safe(info,"trailingPE"); beta=safe(info,"beta")
     m1,m2,m3,m4,m5,m6=st.columns(6)
     m1.metric("52أ أعلى",f"{float(w52h):,.2f}" if w52h else "—")
     m2.metric("52أ أدنى",f"{float(w52l):,.2f}" if w52l else "—")
-    m3.metric("الحجم",fmt(vol))
-    m4.metric("القيمة السوقية",fmt(mcap))
+    m3.metric("الحجم",fmt(vol)); m4.metric("القيمة السوقية",fmt(mcap))
     m5.metric("P/E",f"{float(pe):.1f}x" if pe else "—")
     m6.metric("بيتا",f"{float(beta):.2f}" if beta else "—")
-    tabs=st.tabs(["📈 الرسم البياني","🏢 الأساسي","🔬 الفني","🤖 AI والتوقعات","📰 الأخبار","🎯 التوصية"])
+    tabs=st.tabs(["📈 الرسم البياني","🏢 الأساسي","🔬 الفني","🤖 AI","📰 الأخبار","🎯 التوصية"])
     with tabs[0]:
         _sl=price*0.93; _t1=res if res>price else price*1.08; _t2=_t1*1.10
         st.plotly_chart(chart_price(df,ticker,sup,res,price=price,sl=_sl,t1=_t1,t2=_t2),use_container_width=True)
         st.plotly_chart(chart_macd(df),use_container_width=True)
-        buy_idx_leg,sell_idx_leg=detect_signals(df)
+        bi,si=detect_signals(df)
         sc1,sc2,sc3,sc4=st.columns(4)
-        sc1.markdown(f"""<div class="card" style="text-align:center;border-color:#3fb950"><div style="font-size:.8rem;color:#8b949e">إشارات شراء</div><div style="font-size:1.4rem;font-weight:900;color:#3fb950">{len(buy_idx_leg)}</div><div style="font-size:.75rem;color:#8b949e">آخر سنتين</div></div>""",unsafe_allow_html=True)
-        sc2.markdown(f"""<div class="card" style="text-align:center;border-color:#f85149"><div style="font-size:.8rem;color:#8b949e">إشارات بيع</div><div style="font-size:1.4rem;font-weight:900;color:#f85149">{len(sell_idx_leg)}</div><div style="font-size:.75rem;color:#8b949e">آخر سنتين</div></div>""",unsafe_allow_html=True)
-        sc3.markdown(f"""<div class="card" style="text-align:center;border-color:#f85149"><div style="font-size:.8rem;color:#8b949e">وقف الخسارة</div><div style="font-size:1.1rem;font-weight:900;color:#f85149">{_sl:,.2f}</div><div style="font-size:.75rem;color:#8b949e">-7% من السعر</div></div>""",unsafe_allow_html=True)
-        sc4.markdown(f"""<div class="card" style="text-align:center;border-color:#58a6ff"><div style="font-size:.8rem;color:#8b949e">الهدف الأول</div><div style="font-size:1.1rem;font-weight:900;color:#58a6ff">{_t1:,.2f}</div><div style="font-size:.75rem;color:#8b949e">مستوى المقاومة</div></div>""",unsafe_allow_html=True)
+        sc1.markdown(f'<div class="card" style="text-align:center;border-color:#3fb950"><div style="font-size:.8rem;color:#8b949e">إشارات شراء</div><div style="font-size:1.4rem;font-weight:900;color:#3fb950">{len(bi)}</div></div>',unsafe_allow_html=True)
+        sc2.markdown(f'<div class="card" style="text-align:center;border-color:#f85149"><div style="font-size:.8rem;color:#8b949e">إشارات بيع</div><div style="font-size:1.4rem;font-weight:900;color:#f85149">{len(si)}</div></div>',unsafe_allow_html=True)
+        sc3.markdown(f'<div class="card" style="text-align:center;border-color:#f85149"><div style="font-size:.8rem;color:#8b949e">وقف الخسارة</div><div style="font-size:1.1rem;font-weight:900;color:#f85149">{_sl:,.2f}</div></div>',unsafe_allow_html=True)
+        sc4.markdown(f'<div class="card" style="text-align:center;border-color:#58a6ff"><div style="font-size:.8rem;color:#8b949e">الهدف الأول</div><div style="font-size:1.1rem;font-weight:900;color:#58a6ff">{_t1:,.2f}</div></div>',unsafe_allow_html=True)
     with tabs[1]:
         st.markdown('<div class="section-title">🏢 البيانات المالية</div>',unsafe_allow_html=True)
-        rows=[("الإيرادات",fmt(fund["rev"]),sbadge(fund["rg"],0.10,-0.05)),("صافي الأرباح",fmt(fund["earn"]),sbadge(fund["earn"],0,None)),("نمو الإيرادات",pct(fund["rg"]),sbadge(fund["rg"],0.10,-0.05)),("نمو الأرباح",pct(fund["eg"]),sbadge(fund["eg"],0.10,-0.05)),("هامش الربح الإجمالي",pct(fund["gm"]),sbadge(fund["gm"],0.40,0.15)),("هامش التشغيل",pct(fund["om"]),sbadge(fund["om"],0.20,0.05)),("هامش صافي الربح",pct(fund["npm"]),sbadge(fund["npm"],0.15,0.03)),("ROE",pct(fund["roe"]),sbadge(fund["roe"],0.15,0.05)),("ROA",pct(fund["roa"]),sbadge(fund["roa"],0.08,0.02)),("نسبة الدين/الملكية",f'{float(fund["debt"]):.2f}x' if fund["debt"] else "—",badge("متوسط","yellow")),("نسبة السيولة",f'{float(fund["cr"]):.2f}x' if fund["cr"] else "—",sbadge(fund["cr"],2.0,1.0)),("التدفق النقدي الحر",fmt(fund["fcf"]),sbadge(fund["fcf"],0,None)),("P/E",f'{float(fund["pe"]):.1f}x' if fund["pe"] else "—",badge("مؤشر التقييم","blue")),("P/B",f'{float(fund["pb"]):.2f}x' if fund["pb"] else "—",badge("مؤشر التقييم","blue")),("EPS",fmt(fund["eps"]),sbadge(fund["eps"],0,None)),("توزيعات الأرباح",pct(fund["div"]),badge("دخل ثابت","purple") if fund["div"] else badge("لا يوجد","yellow")),("بيتا",f'{float(fund["beta"]):.2f}' if fund["beta"] else "—",badge("مستقر","green") if fund["beta"] and float(fund["beta"])<1 else badge("متقلب","yellow"))]
+        rows=[("الإيرادات",fmt(fund["rev"]),sbadge(fund["rg"],0.10,-0.05)),("صافي الأرباح",fmt(fund["earn"]),sbadge(fund["earn"],0,None)),("نمو الإيرادات",pct(fund["rg"]),sbadge(fund["rg"],0.10,-0.05)),("نمو الأرباح",pct(fund["eg"]),sbadge(fund["eg"],0.10,-0.05)),("هامش إجمالي",pct(fund["gm"]),sbadge(fund["gm"],0.40,0.15)),("هامش التشغيل",pct(fund["om"]),sbadge(fund["om"],0.20,0.05)),("هامش صافي",pct(fund["npm"]),sbadge(fund["npm"],0.15,0.03)),("ROE",pct(fund["roe"]),sbadge(fund["roe"],0.15,0.05)),("ROA",pct(fund["roa"]),sbadge(fund["roa"],0.08,0.02)),("الدين/الملكية",f'{float(fund["debt"]):.2f}x' if fund["debt"] else "—",badge("متوسط","yellow")),("السيولة",f'{float(fund["cr"]):.2f}x' if fund["cr"] else "—",sbadge(fund["cr"],2.0,1.0)),("التدفق النقدي",fmt(fund["fcf"]),sbadge(fund["fcf"],0,None)),("P/E",f'{float(fund["pe"]):.1f}x' if fund["pe"] else "—",badge("تقييم","blue")),("P/B",f'{float(fund["pb"]):.2f}x' if fund["pb"] else "—",badge("تقييم","blue")),("EPS",fmt(fund["eps"]),sbadge(fund["eps"],0,None)),("التوزيعات",pct(fund["div"]),badge("دخل","purple") if fund["div"] else badge("لا يوجد","yellow")),("بيتا",f'{float(fund["beta"]):.2f}' if fund["beta"] else "—",badge("مستقر","green") if fund["beta"] and float(fund["beta"])<1 else badge("متقلب","yellow"))]
         tbl='<table class="pro-table"><thead><tr><th>المؤشر</th><th>القيمة</th><th>التقييم</th></tr></thead><tbody>'
         for l,v,b in rows: tbl+=f'<tr><td>{l}</td><td>{v}</td><td>{b}</td></tr>'
         st.markdown(tbl+'</tbody></table>',unsafe_allow_html=True)
     with tabs[2]:
         st.markdown('<div class="section-title">🔬 المؤشرات الفنية</div>',unsafe_allow_html=True)
-        tr=[("الاتجاه العام",tech["trend"]),("MA50",f'{tech["ma50"]:,.2f}' if tech["ma50"] else "—"),("MA200",f'{tech["ma200"]:,.2f}' if tech["ma200"] else "—"),("RSI (14)",f'{tech["rsi"]:.1f} — {tech["rs"]}' if tech["rsi"] else "—"),("MACD",f'{tech["macd"]:.3f} — {tech["ms"]}'),("بولينجر باندز",tech["bbs"]),("الدعم",f'{tech["sup"]:,.2f}'),("المقاومة",f'{tech["res"]:,.2f}'),("حجم التداول",tech["vs"]),("الأنماط"," | ".join(tech["patterns"]))]
-        tbl='<table class="pro-table"><thead><tr><th>المؤشر</th><th>القيمة / الإشارة</th></tr></thead><tbody>'
+        tr=[("الاتجاه",tech["trend"]),("MA50",f'{tech["ma50"]:,.2f}' if tech["ma50"] else "—"),("MA200",f'{tech["ma200"]:,.2f}' if tech["ma200"] else "—"),("RSI",f'{tech["rsi"]:.1f} — {tech["rs"]}' if tech["rsi"] else "—"),("MACD",f'{tech["macd"]:.3f} — {tech["ms"]}'),("بولينجر",tech["bbs"]),("الدعم",f'{tech["sup"]:,.2f}'),("المقاومة",f'{tech["res"]:,.2f}'),("الحجم",tech["vs"]),("الأنماط"," | ".join(tech["patterns"]))]
+        tbl='<table class="pro-table"><thead><tr><th>المؤشر</th><th>الإشارة</th></tr></thead><tbody>'
         for l,v in tr: tbl+=f'<tr><td>{l}</td><td>{v}</td></tr>'
         st.markdown(tbl+'</tbody></table>',unsafe_allow_html=True)
     with tabs[3]:
-        st.markdown('<div class="section-title">🤖 تحليل AI والتوقعات</div>',unsafe_allow_html=True)
+        st.markdown('<div class="section-title">🤖 AI والتوقعات</div>',unsafe_allow_html=True)
         if forecast:
-            st.markdown(f"""<div class="ai-box"><div class="ai-title">🤖 تحليل الزخم والتوقعات</div>
+            st.markdown(f"""<div class="ai-box"><div class="ai-title">🤖 تحليل الزخم</div>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:.8rem;font-size:.88rem">
-                <div>📅 العائد شهر: <b style="color:{'#3fb950' if forecast['ret_1m']>=0 else '#f85149'}">{forecast['ret_1m']:+.1f}%</b></div>
-                <div>📅 العائد 3 أشهر: <b style="color:{'#3fb950' if forecast['ret_3m']>=0 else '#f85149'}">{forecast['ret_3m']:+.1f}%</b></div>
-                <div>📅 العائد 6 أشهر: <b style="color:{'#3fb950' if forecast['ret_6m']>=0 else '#f85149'}">{forecast['ret_6m']:+.1f}%</b></div>
-                <div>📊 التقلب: <b>{forecast['vol']:.1f}%</b></div>
-                <div>🎯 التوقعات: <b>{forecast['outlook']}</b></div>
-                <div>🎯 الهدف: <b style="color:#58a6ff">{forecast['target']:,.2f} {cur}</b></div>
+                <div>شهر: <b style="color:{'#3fb950' if forecast['ret_1m']>=0 else '#f85149'}">{forecast['ret_1m']:+.1f}%</b></div>
+                <div>3 أشهر: <b style="color:{'#3fb950' if forecast['ret_3m']>=0 else '#f85149'}">{forecast['ret_3m']:+.1f}%</b></div>
+                <div>6 أشهر: <b style="color:{'#3fb950' if forecast['ret_6m']>=0 else '#f85149'}">{forecast['ret_6m']:+.1f}%</b></div>
+                <div>التقلب: <b>{forecast['vol']:.1f}%</b></div>
+                <div>التوقعات: <b>{forecast['outlook']}</b></div>
+                <div>الهدف: <b style="color:#58a6ff">{forecast['target']:,.2f} {cur}</b></div>
               </div></div>""",unsafe_allow_html=True)
-            future_dates=[hist.index[-1]+timedelta(days=i*7) for i in range(1,9)]
+            fd=[hist.index[-1]+timedelta(days=i*7) for i in range(1,9)]
             g=0.02 if forecast["score"]>=5 else 0.005 if forecast["score"]>=3 else -0.01
-            future_prices=[price*(1+g)**i for i in range(1,9)]
+            fp=[price*(1+g)**i for i in range(1,9)]
             fig2=go.Figure()
-            fig2.add_trace(go.Scatter(x=hist.index[-60:],y=hist["Close"].tail(60),line=dict(color="#58a6ff",width=2),name="السعر الفعلي"))
-            fig2.add_trace(go.Scatter(x=future_dates,y=future_prices,line=dict(color="#3fb950",width=2,dash="dash"),name="التوقع"))
-            fig2.update_layout(title="توقع مسار السعر (8 أسابيع)",height=300,**CHART_BG)
+            fig2.add_trace(go.Scatter(x=hist.index[-60:],y=hist["Close"].tail(60),line=dict(color="#58a6ff",width=2),name="الفعلي"))
+            fig2.add_trace(go.Scatter(x=fd,y=fp,line=dict(color="#3fb950",width=2,dash="dash"),name="التوقع"))
+            fig2.update_layout(title="توقع 8 أسابيع",height=280,**CHART_BG)
             st.plotly_chart(fig2,use_container_width=True)
-        st.markdown('<div class="section-title">💰 التقييم العادل</div>',unsafe_allow_html=True)
-        fv_rows=[("السعر الحالي",f"{price:,.2f} {cur}"),("السعر العادل",f"{fv:,.2f} {cur}" if fv else "—"),("القيمة الجوهرية",f"{iv:,.2f} {cur}" if iv else "—"),("الخصم/المبالغة",f"{disc*100:+.1f}%" if disc is not None else "—"),("التقييم",badge("مقيّم بأقل","green") if disc and disc>0.10 else badge("عادل","yellow") if disc and disc>-0.10 else badge("مبالغ فيه","red"))]
+        fv_rows=[("السعر الحالي",f"{price:,.2f} {cur}"),("السعر العادل",f"{fv:,.2f} {cur}" if fv else "—"),("القيمة الجوهرية",f"{iv:,.2f} {cur}" if iv else "—"),("الخصم/المبالغة",f"{disc*100:+.1f}%" if disc is not None else "—"),("التقييم",badge("مقيّم بأقل","green") if disc and disc>0.10 else badge("عادل","yellow") if disc and disc>-0.10 else badge("مبالغ","red"))]
         tbl='<table class="pro-table"><thead><tr><th>البند</th><th>القيمة</th></tr></thead><tbody>'
         for k,v in fv_rows: tbl+=f'<tr><td>{k}</td><td>{v}</td></tr>'
         st.markdown(tbl+'</tbody></table>',unsafe_allow_html=True)
     with tabs[4]:
-        st.markdown('<div class="section-title">📰 آخر الأخبار والمشاعر</div>',unsafe_allow_html=True)
+        st.markdown('<div class="section-title">📰 الأخبار والمشاعر</div>',unsafe_allow_html=True)
         with st.spinner("جارٍ جلب الأخبار…"):
             news=fetch_news(ticker)
         if news:
             pos_count=neg_count=neu_count=0
-            sent_colors={"pos":"#3fb950","neg":"#f85149","neu":"#d29922"}
-            sent_labels={"pos":"إيجابي 🟢","neg":"سلبي 🔴","neu":"محايد 🟡"}
+            sc={"pos":"#3fb950","neg":"#f85149","neu":"#d29922"}
+            sl={"pos":"إيجابي 🟢","neg":"سلبي 🔴","neu":"محايد 🟡"}
             for item in news:
                 title=item.get("title","بدون عنوان")
                 pub=item.get("providerPublishTime",0)
-                link=item.get("link","") or item.get("url","") or ""
+                link=item.get("link","") or ""
                 publisher=item.get("publisher","") or ""
                 pub_str=datetime.fromtimestamp(pub).strftime("%Y-%m-%d %H:%M") if pub else "—"
                 sent,skind=analyze_sentiment(title)
                 if skind=="pos": pos_count+=1
                 elif skind=="neg": neg_count+=1
                 else: neu_count+=1
-                scol=sent_colors[skind]; slbl=sent_labels[skind]
-                link_clean=link.strip() if link else ""
-                if link_clean and not link_clean.startswith("http"): link_clean="https://"+link_clean
-                if link_clean:
-                    link_html=f'<a href="{link_clean}" target="_blank" rel="noopener noreferrer" style="color:#58a6ff;text-decoration:none;font-weight:600;background:rgba(88,166,255,0.1);padding:.2rem .6rem;border-radius:6px;border:1px solid #58a6ff;font-size:.8rem;">🔗 اقرأ الخبر كاملاً ↗</a>'
-                else:
-                    link_html='<span style="color:#8b949e;font-size:.8rem">لا يوجد رابط</span>'
-                pub_html=f"<span>📰 {publisher}</span>" if publisher else ""
-                st.markdown(f"""<div class="news-item" style="border-right:3px solid {scol}">
-                  <div class="news-title" style="margin-bottom:.5rem">{title}</div>
-                  <div class="news-meta" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
-                    <span>🕐 {pub_str}</span>{pub_html}
-                    <span style="color:{scol};font-weight:700">{slbl}</span>{link_html}
-                  </div></div>""",unsafe_allow_html=True)
+                lc=link.strip()
+                if lc and not lc.startswith("http"): lc="https://"+lc
+                lh=f'<a href="{lc}" target="_blank" rel="noopener noreferrer" style="color:#58a6ff;text-decoration:none;font-weight:600;background:rgba(88,166,255,0.1);padding:.2rem .6rem;border-radius:6px;border:1px solid #58a6ff;font-size:.8rem;">🔗 اقرأ الخبر ↗</a>' if lc else '<span style="color:#8b949e">لا يوجد رابط</span>'
+                ph=f"<span>📰 {publisher}</span>" if publisher else ""
+                st.markdown(f'<div class="news-item" style="border-right:3px solid {sc[skind]}"><div class="news-title">{title}</div><div class="news-meta" style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap"><span>🕐 {pub_str}</span>{ph}<span style="color:{sc[skind]};font-weight:700">{sl[skind]}</span>{lh}</div></div>',unsafe_allow_html=True)
             total=pos_count+neg_count+neu_count
             if total:
-                fig_s=go.Figure(go.Bar(x=["إيجابي 🟢","سلبي 🔴","محايد 🟡"],y=[pos_count,neg_count,neu_count],marker_color=["#3fb950","#f85149","#d29922"],text=[pos_count,neg_count,neu_count],textposition="auto"))
-                fig_s.update_layout(title="توزيع مشاعر الأخبار",height=220,showlegend=False,**CHART_BG)
-                st.plotly_chart(fig_s,use_container_width=True)
+                fs=go.Figure(go.Bar(x=["إيجابي","سلبي","محايد"],y=[pos_count,neg_count,neu_count],marker_color=["#3fb950","#f85149","#d29922"],text=[pos_count,neg_count,neu_count],textposition="auto"))
+                fs.update_layout(title="مشاعر الأخبار",height=200,showlegend=False,**CHART_BG)
+                st.plotly_chart(fs,use_container_width=True)
         else:
-            st.info("لا تتوفر أخبار — جرب سهماً أمريكياً مثل AAPL")
+            st.info("لا تتوفر أخبار — جرب AAPL أو MSFT")
     with tabs[5]:
         st.markdown('<div class="section-title">🎯 القرار النهائي</div>',unsafe_allow_html=True)
-        st.markdown(f"""<div class="verdict-box v-{vcss}">
-          <div class="verdict-title" style="color:{vcol}">{verdict}</div>
-          <div class="verdict-sub">{reason}</div></div>""",unsafe_allow_html=True)
+        st.markdown(f'<div class="verdict-box v-{vcss}"><div class="verdict-title" style="color:{vcol}">{verdict}</div><div class="verdict-sub">{reason}</div></div>',unsafe_allow_html=True)
         cf_v=min(fund["score"]/10,1)*40; ct_v=min((tech["score"]+2)/9,1)*35; cv_v=(vs/3)*25
         st.markdown(f"""
-        <div class="conf-wrap"><div class="conf-row"><span>التحليل الأساسي (40%)</span><span>{cf_v:.0f}/40</span></div><div class="conf-track"><div class="conf-fill" style="width:{cf_v/40*100}%;background:#3fb950"></div></div></div>
-        <div class="conf-wrap"><div class="conf-row"><span>التحليل الفني (35%)</span><span>{ct_v:.0f}/35</span></div><div class="conf-track"><div class="conf-fill" style="width:{ct_v/35*100}%;background:#58a6ff"></div></div></div>
-        <div class="conf-wrap"><div class="conf-row"><span>التقييم العادل (25%)</span><span>{cv_v:.0f}/25</span></div><div class="conf-track"><div class="conf-fill" style="width:{cv_v/25*100}%;background:#bc8cff"></div></div></div>
+        <div class="conf-wrap"><div class="conf-row"><span>الأساسي (40%)</span><span>{cf_v:.0f}/40</span></div><div class="conf-track"><div class="conf-fill" style="width:{cf_v/40*100}%;background:#3fb950"></div></div></div>
+        <div class="conf-wrap"><div class="conf-row"><span>الفني (35%)</span><span>{ct_v:.0f}/35</span></div><div class="conf-track"><div class="conf-fill" style="width:{ct_v/35*100}%;background:#58a6ff"></div></div></div>
+        <div class="conf-wrap"><div class="conf-row"><span>التقييم (25%)</span><span>{cv_v:.0f}/25</span></div><div class="conf-track"><div class="conf-fill" style="width:{cv_v/25*100}%;background:#bc8cff"></div></div></div>
         <div class="conf-wrap" style="margin-top:.6rem"><div class="conf-row" style="font-weight:700"><span>درجة الثقة</span><span>{conf}/100</span></div><div class="conf-track" style="height:11px"><div class="conf-fill" style="width:{conf}%;background:linear-gradient(90deg,#58a6ff,#bc8cff)"></div></div></div>""",unsafe_allow_html=True)
-        st.markdown('<div class="section-title">📋 ملخص المخرجات</div>',unsafe_allow_html=True)
         _sl=price*0.93; _t1=res if res>price else price*1.08; _t2=_t1*1.10; _t12=(fv or price)*1.05
         _bl=sup if sup<price else price*0.97; _bh=price*1.02
-        sum_rows=[("السعر الحالي",f"{price:,.2f} {cur}"),("السعر العادل",f"{fv:,.2f} {cur}" if fv else "—"),("القيمة الجوهرية",f"{iv:,.2f} {cur}" if iv else "—"),("الخصم/المبالغة",f"{disc*100:+.1f}%" if disc is not None else "—"),("منطقة الشراء",f"{_bl:,.2f} – {_bh:,.2f} {cur}"),("وقف الخسارة",f"{_sl:,.2f} {cur}"),("الهدف الأول",f"{_t1:,.2f} {cur}"),("الهدف الثاني",f"{_t2:,.2f} {cur}"),("هدف 12 شهر",f"{_t12:,.2f} {cur}"),("هدف AI",f"{forecast['target']:,.2f} {cur}" if forecast else "—"),("درجة الثقة",f"{conf}/100"),("التوصية",verdict)]
+        sr=[("السعر الحالي",f"{price:,.2f} {cur}"),("السعر العادل",f"{fv:,.2f} {cur}" if fv else "—"),("القيمة الجوهرية",f"{iv:,.2f} {cur}" if iv else "—"),("الخصم/المبالغة",f"{disc*100:+.1f}%" if disc is not None else "—"),("منطقة الشراء",f"{_bl:,.2f} – {_bh:,.2f} {cur}"),("وقف الخسارة",f"{_sl:,.2f} {cur}"),("الهدف الأول",f"{_t1:,.2f} {cur}"),("الهدف الثاني",f"{_t2:,.2f} {cur}"),("هدف 12 شهر",f"{_t12:,.2f} {cur}"),("هدف AI",f"{forecast['target']:,.2f} {cur}" if forecast else "—"),("درجة الثقة",f"{conf}/100"),("التوصية",verdict)]
         tbl='<table class="pro-table"><thead><tr><th>البند</th><th>القيمة</th></tr></thead><tbody>'
-        for k,v in sum_rows:
+        for k,v in sr:
             cs=f"color:{vcol};font-weight:700" if k=="التوصية" else ""
             tbl+=f'<tr><td>{k}</td><td style="{cs}">{v}</td></tr>'
         st.markdown(tbl+'</tbody></table>',unsafe_allow_html=True)
-        report=generate_report_text(ticker,name,price,cur,verdict,conf,tech,fund,fv,iv,disc,forecast)
-        st.download_button(label="⬇️ تحميل التقرير",data=report.encode("utf-8"),file_name=f"report_{ticker}_{datetime.now().strftime('%Y%m%d')}.txt",mime="text/plain")
-    st.markdown("""<div class="disclaimer">⚠️ <b>إخلاء المسؤولية:</b> هذا التحليل لأغراض تعليمية فقط. البيانات من Yahoo Finance.</div>""",unsafe_allow_html=True)
+        rpt=generate_report(ticker,name,price,cur,verdict,conf,tech,fund,fv,iv,disc,forecast)
+        st.download_button("⬇️ تحميل التقرير",data=rpt.encode("utf-8"),file_name=f"report_{ticker}.txt",mime="text/plain")
+    st.markdown('<div class="disclaimer">⚠️ لأغراض تعليمية فقط — ليس توصية استثمارية</div>',unsafe_allow_html=True)
 
 def page_compare():
     st.markdown('<div class="section-title">⚖️ مقارنة الأسهم</div>',unsafe_allow_html=True)
@@ -579,7 +542,7 @@ def page_compare():
             st.markdown(tbl+'</tbody></table>',unsafe_allow_html=True)
 
 def page_portfolio():
-    st.markdown('<div class="section-title">💼 المحفظة الاستثمارية</div>',unsafe_allow_html=True)
+    st.markdown('<div class="section-title">💼 المحفظة</div>',unsafe_allow_html=True)
     with st.expander("➕ إضافة سهم",expanded=False):
         c1,c2,c3,c4=st.columns(4)
         with c1: pt=st.text_input("رمز",key="pft")
@@ -605,7 +568,7 @@ def page_portfolio():
     if rows:
         tpnl=tv-tc
         m1,m2,m3,m4=st.columns(4)
-        m1.metric("التكلفة",fmt(tc)); m2.metric("القيمة الحالية",fmt(tv))
+        m1.metric("التكلفة",fmt(tc)); m2.metric("القيمة",fmt(tv))
         m3.metric("الربح/الخسارة",fmt(tpnl),delta=f"{(tv/tc-1)*100:.1f}%" if tc else None)
         m4.metric("العائد",f"{(tv/tc-1)*100:.1f}%" if tc else "—")
         st.plotly_chart(chart_portfolio(rows),use_container_width=True)
@@ -617,7 +580,7 @@ def page_portfolio():
         if st.button("🗑️ مسح المحفظة"): st.session_state.portfolio=[]; st.rerun()
 
 def page_alerts():
-    st.markdown('<div class="section-title">🔔 تنبيهات السعر</div>',unsafe_allow_html=True)
+    st.markdown('<div class="section-title">🔔 التنبيهات</div>',unsafe_allow_html=True)
     with st.expander("➕ إضافة تنبيه",expanded=True):
         c1,c2,c3,c4=st.columns(4)
         with c1: at=st.text_input("رمز",key="alt")
@@ -627,7 +590,7 @@ def page_alerts():
         if st.button("➕ إضافة",key="aladd") and at:
             tk=get_ticker(at,MARKETS[am])
             st.session_state.alerts.append({"ticker":tk,"type":atype,"price":ap,"date":datetime.now().strftime("%Y-%m-%d %H:%M")})
-            st.success(f"✅ تنبيه مُضاف: {tk} {atype} {ap:,.2f}")
+            st.success(f"✅ {tk} {atype} {ap:,.2f}")
     if st.session_state.alerts:
         for i,a in enumerate(st.session_state.alerts):
             c1,c2=st.columns([5,1])
@@ -637,7 +600,7 @@ def page_alerts():
     else: st.info("لا توجد تنبيهات")
 
 def page_history():
-    st.markdown('<div class="section-title">📜 سجل التحليلات</div>',unsafe_allow_html=True)
+    st.markdown('<div class="section-title">📜 السجل</div>',unsafe_allow_html=True)
     if not st.session_state.history: st.info("لم تقم بأي تحليل بعد"); return
     tbl='<table class="pro-table"><thead><tr><th>الوقت</th><th>السهم</th><th>الاسم</th><th>السعر</th><th>التوصية</th><th>الثقة</th></tr></thead><tbody>'
     for h in reversed(st.session_state.history[-50:]):
@@ -646,7 +609,7 @@ def page_history():
     if st.button("🗑️ مسح السجل"): st.session_state.history=[]; st.rerun()
 
 def page_watchlist():
-    st.markdown('<div class="section-title">👁️ قائمة المراقبة</div>',unsafe_allow_html=True)
+    st.markdown('<div class="section-title">👁️ المراقبة</div>',unsafe_allow_html=True)
     with st.expander("➕ إضافة",expanded=False):
         c1,c2=st.columns(2)
         with c1: wt=st.text_input("رمز",key="wlt")
@@ -656,7 +619,7 @@ def page_watchlist():
             if tk not in [w["ticker"] for w in st.session_state.watchlist]:
                 st.session_state.watchlist.append({"ticker":tk,"market":wm}); st.success(f"✅ {tk}")
     if not st.session_state.watchlist: st.info("القائمة فارغة"); return
-    tbl='<table class="pro-table"><thead><tr><th>السهم</th><th>السعر</th><th>التغيير</th><th>52أ أعلى</th><th>52أ أدنى</th><th>القيمة السوقية</th></tr></thead><tbody>'
+    tbl='<table class="pro-table"><thead><tr><th>السهم</th><th>السعر</th><th>التغيير</th><th>أعلى 52أ</th><th>أدنى 52أ</th><th>القيمة السوقية</th></tr></thead><tbody>'
     for item in st.session_state.watchlist:
         info,hist,_=fetch_stock(item["ticker"])
         if info and hist is not None and not hist.empty:
@@ -675,9 +638,9 @@ st.markdown("""<div class="pro-header">
 
 page=st.radio("",["🔍 تحليل","⚖️ مقارنة","💼 المحفظة","🔔 التنبيهات","👁️ المراقبة","📜 السجل"],horizontal=True,label_visibility="collapsed")
 st.markdown("---")
-if   page=="🔍 تحليل":    page_analysis()
-elif page=="⚖️ مقارنة":   page_compare()
-elif page=="💼 المحفظة":  page_portfolio()
+if   page=="🔍 تحليل":     page_analysis()
+elif page=="⚖️ مقارنة":    page_compare()
+elif page=="💼 المحفظة":   page_portfolio()
 elif page=="🔔 التنبيهات": page_alerts()
 elif page=="👁️ المراقبة":  page_watchlist()
-elif page=="📜 السجل":    page_history()
+elif page=="📜 السجل":     page_history()
