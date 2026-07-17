@@ -245,6 +245,159 @@ def analyze_technicals(df):
         "resistance": resistance, "support": support, "fibs": fibs, "volume": volume
     }
 
+
+def detect_candlestick_patterns(df):
+    """كشف نماذج الشموع اليابانية"""
+    patterns = []
+    if len(df) < 3:
+        return patterns
+
+    opens  = df['Open'].values
+    highs  = df['High'].values
+    lows   = df['Low'].values
+    closes = df['Close'].values
+
+    def body(i):   return abs(closes[i] - opens[i])
+    def rng(i):    return highs[i] - lows[i]
+    def upper(i):  return highs[i] - max(opens[i], closes[i])
+    def lower(i):  return min(opens[i], closes[i]) - lows[i]
+    def is_bull(i):return closes[i] > opens[i]
+
+    i = len(closes) - 1
+
+    # دوجي
+    if rng(i) > 0 and body(i) / rng(i) < 0.1:
+        patterns.append({"name":"دوجي","type":"انعكاس محتمل","signal":"محايد","bullish":None,"strength":"متوسط"})
+
+    # مطرقة
+    if is_bull(i) and lower(i) > 2*body(i) and upper(i) < 0.1*rng(i) and body(i)>0:
+        patterns.append({"name":"مطرقة ↑","type":"انعكاس صعودي","signal":"شراء","bullish":True,"strength":"قوي"})
+
+    # نجمة ساقطة
+    if not is_bull(i) and upper(i) > 2*body(i) and lower(i) < 0.1*rng(i) and body(i)>0:
+        patterns.append({"name":"نجمة ساقطة ↓","type":"انعكاس هبوطي","signal":"بيع","bullish":False,"strength":"قوي"})
+
+    # ماروبوزو صاعد
+    if body(i) > 0.85*rng(i) and is_bull(i):
+        patterns.append({"name":"ماروبوزو صاعد ↑","type":"استمرار صعودي","signal":"شراء قوي","bullish":True,"strength":"قوي جداً"})
+
+    # ماروبوزو هابط
+    if body(i) > 0.85*rng(i) and not is_bull(i):
+        patterns.append({"name":"ماروبوزو هابط ↓","type":"استمرار هبوطي","signal":"بيع قوي","bullish":False,"strength":"قوي جداً"})
+
+    if i >= 1:
+        p = i - 1
+        # ابتلاع شرائي
+        if not is_bull(p) and is_bull(i) and closes[i] > opens[p] and opens[i] < closes[p]:
+            patterns.append({"name":"ابتلاع شرائي ↑","type":"انعكاس صعودي","signal":"شراء قوي","bullish":True,"strength":"قوي جداً"})
+        # ابتلاع بيعي
+        if is_bull(p) and not is_bull(i) and closes[i] < opens[p] and opens[i] > closes[p]:
+            patterns.append({"name":"ابتلاع بيعي ↓","type":"انعكاس هبوطي","signal":"بيع قوي","bullish":False,"strength":"قوي جداً"})
+
+    if i >= 2:
+        a, b, c = i-2, i-1, i
+        # نجمة الصباح
+        if not is_bull(a) and body(b)<0.3*rng(b) and is_bull(c) and closes[c]>(opens[a]+closes[a])/2:
+            patterns.append({"name":"نجمة الصباح ↑","type":"انعكاس صعودي","signal":"شراء قوي","bullish":True,"strength":"قوي جداً"})
+        # نجمة المساء
+        if is_bull(a) and body(b)<0.3*rng(b) and not is_bull(c) and closes[c]<(opens[a]+closes[a])/2:
+            patterns.append({"name":"نجمة المساء ↓","type":"انعكاس هبوطي","signal":"بيع قوي","bullish":False,"strength":"قوي جداً"})
+        # ثلاثة جنود بيض
+        if all(is_bull(x) and body(x)>0.6*rng(x) for x in [a,b,c]) and closes[a]<closes[b]<closes[c]:
+            patterns.append({"name":"ثلاثة جنود بيض ↑","type":"استمرار صعودي","signal":"شراء قوي","bullish":True,"strength":"قوي جداً"})
+        # ثلاثة غربان سود
+        if all(not is_bull(x) and body(x)>0.6*rng(x) for x in [a,b,c]) and closes[a]>closes[b]>closes[c]:
+            patterns.append({"name":"ثلاثة غربان سود ↓","type":"استمرار هبوطي","signal":"بيع قوي","bullish":False,"strength":"قوي جداً"})
+
+    if not patterns:
+        bull = closes[-1] > opens[-1]
+        patterns.append({"name":"شمعة " + ("صاعدة" if bull else "هابطة"),
+            "type":"استمرار","signal":"استمرار الاتجاه","bullish":bull,"strength":"ضعيف"})
+    return patterns
+
+
+def calculate_fair_value(price, info, tech):
+    """حساب السعر العادل ومناطق الدخول"""
+    results = {}
+
+    # Graham Number
+    eps = info.get('trailingEps')
+    bvps = info.get('bookValue')
+    if eps and bvps and eps > 0 and bvps > 0:
+        graham = round((22.5 * eps * bvps) ** 0.5, 3)
+        results['graham'] = graham
+    else:
+        results['graham'] = None
+
+    # P/E Fair Value
+    pe = info.get('trailingPE')
+    eps2 = info.get('trailingEps')
+    sector_pe = 15
+    if pe and eps2 and eps2 > 0:
+        fair_pe = round(sector_pe * eps2, 3)
+        results['fair_pe'] = fair_pe
+    else:
+        results['fair_pe'] = None
+
+    # متوسط السعر العادل
+    valid = [v for v in [results.get('graham'), results.get('fair_pe')] if v and v > 0]
+    results['avg_fair'] = round(sum(valid)/len(valid), 3) if valid else None
+
+    # مناطق الدخول من فيبوناتشي والدعم
+    support = tech.get('support', [])
+    fibs = tech.get('fibs', {})
+    fib_levels = list(fibs.values())
+
+    entry_zones = []
+    # منطقة الدخول الأولى: عند أقرب دعم
+    if support:
+        entry_zones.append({
+            "zone": f"منطقة شراء قوية",
+            "from": round(support[0] * 0.99, 3),
+            "to":   round(support[0] * 1.01, 3),
+            "type": "دعم رئيسي",
+            "color": "#3fb950"
+        })
+    if len(support) > 1:
+        entry_zones.append({
+            "zone": "منطقة شراء ممتازة",
+            "from": round(support[1] * 0.99, 3),
+            "to":   round(support[1] * 1.01, 3),
+            "type": "دعم ثانوي",
+            "color": "#58a6ff"
+        })
+
+    # مناطق البيع عند المقاومة
+    resistance = tech.get('resistance', [])
+    sell_zones = []
+    if resistance:
+        sell_zones.append({
+            "zone": "منطقة بيع / جني أرباح",
+            "from": round(resistance[0] * 0.99, 3),
+            "to":   round(resistance[0] * 1.01, 3),
+            "type": "مقاومة رئيسية",
+            "color": "#f85149"
+        })
+
+    results['entry_zones'] = entry_zones
+    results['sell_zones'] = sell_zones
+
+    # تقييم السعر الحالي
+    if results['avg_fair']:
+        margin = (results['avg_fair'] - price) / price * 100
+        if margin > 20:
+            results['valuation'] = ("مقيَّم بأقل من قيمته ✅", "#3fb950", margin)
+        elif margin > 5:
+            results['valuation'] = ("يقترب من قيمته العادلة", "#d29922", margin)
+        elif margin < -20:
+            results['valuation'] = ("مقيَّم بأكثر من قيمته ⚠️", "#f85149", margin)
+        else:
+            results['valuation'] = ("عند قيمته العادلة تقريباً", "#58a6ff", margin)
+    else:
+        results['valuation'] = None
+
+    return results
+
 def generate_signals(df, tech):
     close = df['Close']
     curr  = float(close.iloc[-1])
@@ -367,6 +520,70 @@ def analyze_news_sentiment(news):
 # تقرير Claude AI
 # ═══════════════════════════════════════════════════════
 
+def predict_price_targets(price, tech, info, score):
+    """توقع الأسعار المستهدفة بناءً على التحليل الفني"""
+    atr = safe(tech['atr'].iloc[-1]) or price * 0.02
+    resistance = tech.get('resistance', [])
+    support = tech.get('support', [])
+    fibs = tech.get('fibs', {})
+
+    # أهداف صعود
+    targets_up = []
+    if resistance:
+        for r in resistance[:3]:
+            diff_pct = (r - price) / price * 100
+            days = max(5, int(abs(diff_pct) / 0.3))  # تقدير عدد الأيام
+            targets_up.append({
+                "price": round(r, 3),
+                "pct": round(diff_pct, 1),
+                "days": days,
+                "type": "مقاومة",
+                "probability": max(30, 80 - len(targets_up) * 15)
+            })
+
+    # أهداف هبوط (وقف خسارة)
+    targets_down = []
+    if support:
+        for s in support[:2]:
+            diff_pct = (s - price) / price * 100
+            targets_down.append({
+                "price": round(s, 3),
+                "pct": round(diff_pct, 1),
+                "type": "دعم/وقف خسارة",
+                "probability": 70
+            })
+
+    # هدف ATR
+    atr_target = round(price + 2 * atr, 3)
+    atr_pct = (atr_target - price) / price * 100
+    targets_up.append({
+        "price": atr_target,
+        "pct": round(atr_pct, 1),
+        "days": 14,
+        "type": "ATR ×2",
+        "probability": 60
+    })
+
+    # هدف فيبوناتشي
+    fib_vals = {k: v for k, v in fibs.items() if v > price}
+    if fib_vals:
+        nearest_fib_level = min(fib_vals.items(), key=lambda x: x[1])
+        fib_pct = (nearest_fib_level[1] - price) / price * 100
+        targets_up.append({
+            "price": round(nearest_fib_level[1], 3),
+            "pct": round(fib_pct, 1),
+            "days": max(7, int(abs(fib_pct) / 0.25)),
+            "type": f"فيبوناتشي {nearest_fib_level[0]}",
+            "probability": 65
+        })
+
+    # ترتيب حسب السعر
+    targets_up = sorted([t for t in targets_up if t['pct'] > 0], key=lambda x: x['price'])[:4]
+    targets_down = sorted(targets_down, key=lambda x: x['price'], reverse=True)[:2]
+
+    return targets_up, targets_down
+
+
 def generate_ai_analysis(symbol, price, currency, score, verdict_text, signals, tech, info, news_sent, api_key):
     if not api_key:
         return _smart_report(symbol, price, currency, score, verdict_text, signals, tech, info, news_sent)
@@ -378,40 +595,71 @@ def generate_ai_analysis(symbol, price, currency, score, verdict_text, signals, 
     pe      = info.get('trailingPE','—')
     sector  = info.get('sector','—')
     market_cap = info.get('marketCap', 0)
+    resistance = tech.get('resistance', [])
+    support    = tech.get('support', [])
 
-    prompt = f"""أنت محلل مالي خبير. حلّل هذا السهم وقدّم توصية احترافية بالعربية.
+    prompt = f"""أنت محلل مالي خبير متخصص في الأسواق الخليجية والأمريكية.
+حلّل هذا السهم بدقة وقدّم تقريراً احترافياً شاملاً بالعربية.
 
-السهم: {symbol} — السعر: {price:.3f} {currency}
-القطاع: {sector} | P/E: {pe} | القيمة السوقية: {market_cap/1e9:.1f}B
+═══ بيانات السهم ═══
+السهم: {symbol} | السعر الحالي: {price:.3f} {currency}
+القطاع: {sector} | P/E: {pe} | القيمة السوقية: {f"{market_cap/1e9:.1f}B" if market_cap else "—"}
 
-التحليل الفني (درجة: {score}/100):
-• RSI: {rsi_v:.1f} {'(تشبع بيعي)' if rsi_v < 30 else '(تشبع شرائي)' if rsi_v > 70 else ''}
-• MACD Hist: {macd_v:.4f} ({'إيجابي' if macd_v > 0 else 'سلبي'})
-• SMA20: {s20:.3f if s20 else '—'} | SMA50: {s50:.3f if s50 else '—'}
-• الإشارات: {', '.join([f'{k}: {v[0]}' for k, v in signals.items()])}
+═══ التحليل الفني (درجة: {score}/100) ═══
+• RSI(14): {rsi_v:.1f} — {'⚠️ تشبع شرائي' if rsi_v > 70 else '✅ تشبع بيعي' if rsi_v < 30 else 'محايد'}
+• MACD Histogram: {macd_v:.4f} ({'زخم صاعد ✅' if macd_v > 0 else 'زخم هابط ⚠️'})
+• SMA20: {f"{s20:.3f}" if s20 else "—"} | SMA50: {f"{s50:.3f}" if s50 else "—"}
+• المقاومة الأولى: {resistance[0]:.3f if resistance else "—"}
+• الدعم الأول: {support[0]:.3f if support else "—"}
+• الإشارات: {", ".join([f"{k}: {v[0]}" for k, v in list(signals.items())[:5]])}
 
-التوصية الحالية: {verdict_text}
-مشاعر الأخبار: {news_sent.get('sentiment','—')} (درجة: {news_sent.get('score',50)}/100)
+═══ التوصية والأخبار ═══
+• التوصية الحالية: {verdict_text} (درجة ثقة: {score}/100)
+• مشاعر الأخبار: {news_sent.get("sentiment","—")} (درجة: {news_sent.get("score",50)}/100)
 
-قدّم:
-1. ملخص تنفيذي (3 جمل)
-2. أبرز 3 محفزات للصعود
-3. أبرز 3 مخاطر
-4. توصية نهائية مع مبررها
-5. الأهداف السعرية المقترحة"""
+قدّم التقرير بهذا الهيكل بالضبط:
+
+## الملخص التنفيذي
+[3-4 جمل تشرح الوضع الحالي للسهم]
+
+## التوقعات السعرية
+• **السعر المتوقع خلال أسبوع:** [سعر محدد] {currency} (احتمالية [X]%)
+• **السعر المتوقع خلال شهر:** [سعر محدد] {currency} (احتمالية [X]%)
+• **السعر المتوقع خلال 3 أشهر:** [سعر محدد] {currency} (احتمالية [X]%)
+
+## أهداف الصعود
+• الهدف الأول: [سعر] — [مبرر]
+• الهدف الثاني: [سعر] — [مبرر]
+• الهدف الثالث: [سعر] — [مبرر]
+
+## وقف الخسارة المقترح
+• وقف الخسارة: [سعر] ({currency}) — [مبرر]
+
+## المحفزات الرئيسية ✅
+• [محفز 1 بالأرقام الفعلية]
+• [محفز 2]
+• [محفز 3]
+
+## المخاطر ⚠️
+• [خطر 1]
+• [خطر 2]
+• [خطر 3]
+
+## التوصية النهائية
+[توصية واضحة ومفصّلة مع مبررها]"""
 
     try:
         resp = requests.post(
             "https://api.anthropic.com/v1/messages",
             headers={"Content-Type":"application/json","x-api-key":api_key,"anthropic-version":"2023-06-01"},
-            json={"model":"claude-sonnet-4-6","max_tokens":1500,
-                  "system":"أنت محلل مالي خبير. أجب بالعربية فقط بشكل احترافي.",
+            json={"model":"claude-sonnet-4-6","max_tokens":2000,
+                  "system":"أنت محلل مالي خبير. أجب بالعربية فقط. استخدم الأرقام الفعلية المقدمة في تحليلك.",
                   "messages":[{"role":"user","content":prompt}]},
-            timeout=30
+            timeout=35
         )
         resp.raise_for_status()
         return resp.json()["content"][0]["text"]
-    except Exception as e:
+    except Exception:
         return _smart_report(symbol, price, currency, score, verdict_text, signals, tech, info, news_sent)
 
 def _smart_report(symbol, price, currency, score, verdict_text, signals, tech, info, news_sent):
@@ -419,34 +667,70 @@ def _smart_report(symbol, price, currency, score, verdict_text, signals, tech, i
     macd_v = safe(tech['macd_hist'].iloc[-1]) or 0
     s20    = safe(tech['sma20'].iloc[-1])
     s50    = safe(tech['sma50'].iloc[-1])
-    res    = tech['resistance']
-    sup    = tech['support']
+    atr_v  = safe(tech['atr'].iloc[-1]) or price * 0.02
+    res    = tech.get('resistance', [])
+    sup    = tech.get('support', [])
 
     catalysts = []
     risks = []
 
-    if rsi_v < 35: catalysts.append(f"RSI={rsi_v:.1f} في منطقة تشبع بيعي — فرصة دخول")
-    if macd_v > 0: catalysts.append(f"MACD إيجابي ({macd_v:.4f}) — زخم صاعد")
-    if s20 and price > s20: catalysts.append(f"السعر فوق SMA20 ({s20:.2f}) — اتجاه قصير المدى صاعد")
-    if s50 and price > s50: catalysts.append(f"السعر فوق SMA50 ({s50:.2f}) — اتجاه متوسط المدى صاعد")
-    if sup: catalysts.append(f"دعم قوي عند {sup[0]:.3f}")
+    if rsi_v < 35: catalysts.append(f"RSI={rsi_v:.1f} في منطقة تشبع بيعي — فرصة دخول جيدة")
+    if rsi_v < 45: catalysts.append(f"RSI={rsi_v:.1f} في منطقة منخفضة — مجال للصعود")
+    if macd_v > 0: catalysts.append(f"MACD إيجابي ({macd_v:.4f}) — زخم صاعد مؤكد")
+    if s20 and price > s20: catalysts.append(f"السعر {price:.3f} فوق SMA20 ({s20:.3f}) — اتجاه قصير المدى صاعد")
+    if s50 and price > s50: catalysts.append(f"السعر فوق SMA50 ({s50:.3f}) — اتجاه متوسط المدى صاعد")
+    if sup: catalysts.append(f"دعم قوي عند {sup[0]:.3f} يحمي من الهبوط الحاد")
 
-    if rsi_v > 70: risks.append(f"RSI={rsi_v:.1f} في منطقة تشبع شرائي")
-    if macd_v < 0: risks.append(f"MACD سلبي ({macd_v:.4f}) — ضغط هابط")
-    if s20 and price < s20: risks.append(f"السعر تحت SMA20 ({s20:.2f}) — ضعف قصير المدى")
-    if res: risks.append(f"مقاومة عند {res[0]:.3f} قد تحد من الصعود")
+    if rsi_v > 70: risks.append(f"RSI={rsi_v:.1f} في منطقة تشبع شرائي — احتمال تصحيح")
+    if macd_v < 0: risks.append(f"MACD سلبي ({macd_v:.4f}) — ضغط بيعي مستمر")
+    if s20 and price < s20: risks.append(f"السعر {price:.3f} تحت SMA20 ({s20:.3f}) — ضعف قصير المدى")
+    if s50 and price < s50: risks.append(f"السعر تحت SMA50 ({s50:.3f}) — ضعف متوسط المدى")
+    if res: risks.append(f"مقاومة قوية عند {res[0]:.3f} قد تحد من الصعود")
 
     if not catalysts: catalysts = ["مؤشرات فنية في مستوى مقبول","إمكانية تحسن على المدى القريب","قوة السوق العامة"]
     if not risks: risks = ["مخاطر السوق العامة","تقلبات الأسعار الطبيعية","عدم اليقين الاقتصادي"]
 
+    # التوقعات السعرية
+    target_week  = round(price + atr_v * 1.5, 3)
+    target_month = round(price + atr_v * 3.0, 3)
+    target_3m    = round(price + atr_v * 6.0, 3)
+    stop_loss    = round(sup[0] * 0.985, 3) if sup else round(price * 0.95, 3)
+
+    if score < 45:  # هبوطي
+        target_week  = round(price - atr_v * 1.5, 3)
+        target_month = round(price - atr_v * 2.5, 3)
+        target_3m    = round(price - atr_v * 4.0, 3)
+
+    t1_price = round(res[0], 3) if res else target_week
+    t2_price = round(res[1], 3) if len(res) > 1 else target_month
+    t3_price = round(price * (1.15 if score >= 60 else 0.88), 3)
+
     news_color = "إيجابية" if news_sent.get('score',50) >= 60 else "سلبية" if news_sent.get('score',50) <= 40 else "محايدة"
+    trend_text = "صاعد" if s20 and price > s20 else "هابط" if s20 and price < s20 else "جانبي"
 
     report = f"""## 📊 تقرير التحليل الذكي — {symbol}
 
 ### الملخص التنفيذي
-سهم **{symbol}** يُسجّل درجة تقنية **{score}/100** مع توصية **{verdict_text}**. 
-{'السعر فوق المتوسطات الرئيسية مما يعكس اتجاهاً صاعداً.' if s20 and price > s20 else 'السعر تحت المتوسطات الرئيسية مما يستوجب الحذر.'}
-الأخبار المحيطة بالسهم {news_color} مع درجة {news_sent.get('score',50)}/100.
+سهم **{symbol}** يُسجّل درجة تقنية **{score}/100** مع توصية **{verdict_text}**.
+الاتجاه العام **{trend_text}** — السعر الحالي {price:.3f} {currency}.
+الأخبار {news_color} (درجة {news_sent.get('score',50)}/100). {'ننصح بالدخول عند مستويات الدعم.' if score >= 60 else 'ننصح بالحذر والانتظار لتأكيد الاتجاه.'}
+
+---
+
+### 📈 التوقعات السعرية
+| الفترة | السعر المتوقع | التغير |
+|--------|--------------|--------|
+| أسبوع واحد | **{target_week:.3f} {currency}** | {(target_week-price)/price*100:+.1f}% |
+| شهر واحد | **{target_month:.3f} {currency}** | {(target_month-price)/price*100:+.1f}% |
+| 3 أشهر | **{target_3m:.3f} {currency}** | {(target_3m-price)/price*100:+.1f}% |
+
+### 🎯 أهداف الصعود
+- **الهدف الأول:** {t1_price:.3f} {currency} ({(t1_price-price)/price*100:+.1f}%) — {'مقاومة رئيسية' if res else 'ATR ×1.5'}
+- **الهدف الثاني:** {t2_price:.3f} {currency} ({(t2_price-price)/price*100:+.1f}%) — {'مقاومة ثانية' if len(res)>1 else 'ATR ×3'}
+- **الهدف الثالث:** {t3_price:.3f} {currency} ({(t3_price-price)/price*100:+.1f}%) — هدف مدى متوسط
+
+### 🛑 وقف الخسارة المقترح
+- **وقف الخسارة:** {stop_loss:.3f} {currency} ({(stop_loss-price)/price*100:+.1f}%) — {'تحت الدعم الرئيسي' if sup else 'نسبة ثابتة 5%'}
 
 ### ✅ المحفزات الرئيسية
 {chr(10).join([f'- {c}' for c in catalysts[:4]])}
@@ -454,9 +738,10 @@ def _smart_report(symbol, price, currency, score, verdict_text, signals, tech, i
 ### ⚠️ المخاطر
 {chr(10).join([f'- {r}' for r in risks[:4]])}
 
-### 🎯 التوصية النهائية
-**{verdict_text}** بناءً على التحليل الفني المتكامل. 
-{'ننصح بالدخول عند مستويات الدعم الحالية.' if score >= 60 else 'ننصح بالانتظار لتأكيد الاتجاه.'}
+### 📋 التوصية النهائية
+**{verdict_text}** — بناءً على التحليل الفني المتكامل (درجة {score}/100).
+{'نسبة المخاطرة/العائد: 1:' + str(round((t2_price-price)/(price-stop_loss),1)) if price > stop_loss else ''}
+{'يُنصح بالدخول على مستويات: ' + str(sup[0]) + ' — ' + str(round(sup[0]*1.01,3)) + ' ' + currency if sup and score >= 60 else 'يُنصح بالانتظار لتأكيد الاتجاه قبل الدخول.'}
 """
     return report
 
@@ -710,6 +995,10 @@ if nav == "🔍 تحليل":
                         "modeBarButtonsToRemove":["lasso2d","select2d"]})
 
         with tab_rec:
+            # حساب السعر العادل والشموع
+            candles = detect_candlestick_patterns(df)
+            fair_val = calculate_fair_value(price, info, tech)
+
             st.markdown(f"""
             <div class="verdict-box {verdict[1]}">
               <div class="verdict-title" style="color:{verdict[2]}">{verdict[0]}</div>
@@ -742,9 +1031,88 @@ if nav == "🔍 تحليل":
                       <span class="badge {v[1]}">{v[0]}</span>
                     </div>""", unsafe_allow_html=True)
 
+            # ── السعر العادل ──────────────────────────────────
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("### 💰 السعر العادل والتقييم")
+
+            fv_cols = st.columns(4)
+            with fv_cols[0]:
+                graham = fair_val.get('graham')
+                st.markdown(f"""<div class="metric-card">
+                  <div class="metric-val" style="color:#bc8cff">{graham:.3f if graham else '—'}</div>
+                  <div class="metric-lbl">Graham Number</div>
+                </div>""", unsafe_allow_html=True)
+            with fv_cols[1]:
+                fair_pe = fair_val.get('fair_pe')
+                st.markdown(f"""<div class="metric-card">
+                  <div class="metric-val" style="color:#58a6ff">{fair_pe:.3f if fair_pe else '—'}</div>
+                  <div class="metric-lbl">قيمة P/E العادلة</div>
+                </div>""", unsafe_allow_html=True)
+            with fv_cols[2]:
+                avg_fair = fair_val.get('avg_fair')
+                st.markdown(f"""<div class="metric-card">
+                  <div class="metric-val" style="color:#d29922">{avg_fair:.3f if avg_fair else '—'}</div>
+                  <div class="metric-lbl">متوسط السعر العادل</div>
+                </div>""", unsafe_allow_html=True)
+            with fv_cols[3]:
+                val_tuple = fair_val.get('valuation')
+                if val_tuple:
+                    val_text, val_color, val_margin = val_tuple
+                    st.markdown(f"""<div class="metric-card">
+                      <div class="metric-val" style="color:{val_color};font-size:1rem">{val_text}</div>
+                      <div class="metric-lbl">هامش الأمان: {val_margin:+.1f}%</div>
+                    </div>""", unsafe_allow_html=True)
+
+            # ── مناطق الدخول والخروج ──────────────────────────────
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("### 🎯 مناطق الدخول والخروج")
+            ez1, ez2 = st.columns(2)
+            with ez1:
+                st.markdown("**🟢 مناطق الشراء**")
+                for z in fair_val.get('entry_zones', []):
+                    st.markdown(f"""
+                    <div style="background:rgba(63,185,80,0.1);border:1px solid #3fb950;
+                         border-radius:8px;padding:.7rem;margin-bottom:.5rem">
+                      <div style="color:#3fb950;font-weight:700">{z['zone']}</div>
+                      <div style="color:#e6edf3">من <strong>{z['from']:.3f}</strong> إلى <strong>{z['to']:.3f}</strong></div>
+                      <div style="color:#8b949e;font-size:.8rem">{z['type']}</div>
+                    </div>""", unsafe_allow_html=True)
+                if not fair_val.get('entry_zones'):
+                    st.info("لا توجد مناطق دخول محددة حالياً")
+            with ez2:
+                st.markdown("**🔴 مناطق الخروج/البيع**")
+                for z in fair_val.get('sell_zones', []):
+                    st.markdown(f"""
+                    <div style="background:rgba(248,81,73,0.1);border:1px solid #f85149;
+                         border-radius:8px;padding:.7rem;margin-bottom:.5rem">
+                      <div style="color:#f85149;font-weight:700">{z['zone']}</div>
+                      <div style="color:#e6edf3">من <strong>{z['from']:.3f}</strong> إلى <strong>{z['to']:.3f}</strong></div>
+                      <div style="color:#8b949e;font-size:.8rem">{z['type']}</div>
+                    </div>""", unsafe_allow_html=True)
+
+            # ── الشموع اليابانية ──────────────────────────────────
+            st.markdown("<br>", unsafe_allow_html=True)
+            st.markdown("### 🕯️ نماذج الشموع اليابانية")
+            if candles:
+                candle_cols = st.columns(min(len(candles), 3))
+                for i, c in enumerate(candles[:3]):
+                    bull = c.get('bullish')
+                    clr  = '#3fb950' if bull else '#f85149' if bull is False else '#d29922'
+                    icon = '↑' if bull else '↓' if bull is False else '↔'
+                    with candle_cols[i % 3]:
+                        st.markdown(f"""
+                        <div class="metric-card" style="border-color:{clr}">
+                          <div style="font-size:1.1rem;font-weight:700;color:{clr}">{icon} {c['name']}</div>
+                          <div style="color:#8b949e;font-size:.78rem;margin:.3rem 0">{c['type']}</div>
+                          <span class="badge" style="background:rgba(0,0,0,.3);color:{clr};border:1px solid {clr}">
+                            {c['signal']}
+                          </span>
+                          <div style="color:#8b949e;font-size:.75rem;margin-top:.3rem">قوة: {c['strength']}</div>
+                        </div>""", unsafe_allow_html=True)
+
             # الدعم والمقاومة
             st.markdown("<br>", unsafe_allow_html=True)
-            st.markdown("### 🎯 الدعم والمقاومة")
+            st.markdown("### 📍 الدعم والمقاومة")
             sr1, sr2 = st.columns(2)
             with sr1:
                 st.markdown("**🔴 المقاومة**")
@@ -796,9 +1164,39 @@ if nav == "🔍 تحليل":
                     st.markdown(f"**{lbl}:** `{val}`")
 
         with tab_ai:
-            st.markdown("### 🤖 تقرير الذكاء الاصطناعي")
+            st.markdown("### 🤖 تقرير الذكاء الاصطناعي — التوقعات السعرية")
             if not api_key:
-                st.info("💡 أضف مفتاح Claude AI في الشريط الجانبي للحصول على تقرير أكثر تفصيلاً وذكاءً.")
+                st.info("💡 أضف مفتاح Claude AI في الشريط الجانبي للحصول على توقعات سعرية أكثر دقة وتفصيلاً.")
+
+            # عرض التوقعات السعرية الآلية أولاً
+            targets_up, targets_down = predict_price_targets(price, tech, info, score)
+
+            st.markdown("#### 📈 التوقعات السعرية (تحليل آلي)")
+            tup_cols = st.columns(min(len(targets_up), 4))
+            for i, t in enumerate(targets_up[:4]):
+                with tup_cols[i]:
+                    prob_color = '#3fb950' if t['probability'] >= 65 else '#d29922' if t['probability'] >= 50 else '#8b949e'
+                    st.markdown(f"""<div class="metric-card" style="border-color:#3fb950">
+                      <div style="color:#8b949e;font-size:.72rem;margin-bottom:.2rem">{t['type']}</div>
+                      <div class="metric-val" style="color:#3fb950">{t['price']:.3f}</div>
+                      <div style="color:#e6edf3;font-size:.85rem">{t['pct']:+.1f}%</div>
+                      <div style="color:{prob_color};font-size:.78rem">احتمالية: {t['probability']}%</div>
+                      <div style="color:#8b949e;font-size:.72rem">خلال ~{t['days']} يوم</div>
+                    </div>""", unsafe_allow_html=True)
+
+            if targets_down:
+                st.markdown("#### 🛑 مستويات الدعم/وقف الخسارة")
+                td_cols = st.columns(len(targets_down))
+                for i, t in enumerate(targets_down):
+                    with td_cols[i]:
+                        st.markdown(f"""<div class="metric-card" style="border-color:#f85149">
+                          <div style="color:#8b949e;font-size:.72rem;margin-bottom:.2rem">{t['type']}</div>
+                          <div class="metric-val" style="color:#f85149">{t['price']:.3f}</div>
+                          <div style="color:#e6edf3;font-size:.85rem">{t['pct']:+.1f}%</div>
+                        </div>""", unsafe_allow_html=True)
+
+            st.markdown("---")
+            st.markdown("#### 📋 التقرير التفصيلي")
             with st.spinner("🤖 جاري توليد التقرير..."):
                 ai_report = generate_ai_analysis(
                     symbol, price, currency, score, verdict[0],
@@ -859,18 +1257,65 @@ if nav == "🔍 تحليل":
                 st.info("ℹ️ المعلومات التفصيلية غير متاحة لهذا السهم من Stooq. جرب سهماً أمريكياً.")
 
         with tab_fib:
-            st.markdown("### 📐 مستويات فيبوناتشي")
+            st.markdown("### 📐 مستويات فيبوناتشي مع مناطق الشراء والبيع")
             fibs = tech['fibs']
             curr_p = price
+
+            # شرح مختصر
+            st.markdown("""
+            > **دليل القراءة:** مستويات Fib 38.2% و50% و61.8% هي **مناطق دعم وشراء** محتملة.
+            > مستوى Fib 0% هو **مقاومة** رئيسية.
+            """)
+
+            fib_zones = {
+                "0%":    ("مقاومة رئيسية — منطقة بيع/جني أرباح", "#f85149"),
+                "23.6%": ("دعم خفيف — مراقبة", "#f0883e"),
+                "38.2%": ("دعم متوسط — منطقة شراء محتملة ⭐", "#d29922"),
+                "50%":   ("دعم قوي — منطقة شراء جيدة ⭐⭐", "#58a6ff"),
+                "61.8%": ("دعم ذهبي — منطقة شراء ممتازة ⭐⭐⭐", "#3fb950"),
+                "100%":  ("قاع الموجة — شراء مخاطرة عالية", "#bc8cff"),
+            }
+
             for level, val in fibs.items():
                 diff = (val - curr_p) / curr_p * 100
-                color = '#3fb950' if val < curr_p else '#f85149'
+                zone_desc, zone_color = fib_zones.get(level, ("—", "#8b949e"))
+                is_current = abs(diff) < 2  # السعر قريب من هذا المستوى
+                border_style = f"border:2px solid {zone_color}" if is_current else f"border:1px solid #30363d"
+                bg_style = f"background:rgba(88,166,255,0.1)" if is_current else "background:#161b22"
+
                 st.markdown(f"""
-                <div style="display:flex;justify-content:space-between;padding:.5rem .8rem;
-                     background:#161b22;border-radius:8px;margin-bottom:.4rem;border:1px solid #30363d">
-                  <span style="color:#8b949e">Fib {level}</span>
-                  <span style="color:{color};font-weight:700">{val:.3f}</span>
-                  <span style="color:{color}">{diff:+.1f}%</span>
+                <div style="display:flex;justify-content:space-between;align-items:center;
+                     padding:.7rem 1rem;{bg_style};border-radius:10px;margin-bottom:.5rem;{border_style}">
+                  <div>
+                    <span style="color:#8b949e;font-size:.85rem">Fib {level}</span>
+                    {"<span style=\'background:#58a6ff;color:#000;border-radius:4px;padding:1px 6px;font-size:.7rem;margin-right:.4rem\'>الحالي</span>" if is_current else ""}
+                  </div>
+                  <div style="text-align:center;flex:1;padding:0 1rem">
+                    <span style="color:#8b949e;font-size:.8rem">{zone_desc}</span>
+                  </div>
+                  <div style="text-align:left">
+                    <span style="color:{zone_color};font-weight:700;font-size:1.05rem">{val:.3f}</span>
+                    <span style="color:{zone_color};font-size:.85rem;margin-right:.5rem"> ({diff:+.1f}%)</span>
+                  </div>
+                </div>""", unsafe_allow_html=True)
+
+            # ملخص تحليل فيبوناتشي
+            st.markdown("<br>", unsafe_allow_html=True)
+            closest_support = None
+            closest_resist  = None
+            for level, val in fibs.items():
+                if val < curr_p and (closest_support is None or val > closest_support):
+                    closest_support = val
+                if val > curr_p and (closest_resist is None or val < closest_resist):
+                    closest_resist = val
+
+            if closest_support or closest_resist:
+                st.markdown(f"""
+                <div class="ai-box">
+                  <strong>📊 ملخص فيبوناتشي:</strong><br>
+                  {'أقرب دعم فيبوناتشي: <strong style="color:#3fb950">' + f"{closest_support:.3f}" + '</strong> — ' + f"({(closest_support-curr_p)/curr_p*100:+.1f}%)" if closest_support else ""}
+                  {"<br>" if closest_support and closest_resist else ""}
+                  {'أقرب مقاومة فيبوناتشي: <strong style="color:#f85149">' + f"{closest_resist:.3f}" + '</strong> — ' + f"({(closest_resist-curr_p)/curr_p*100:+.1f}%)" if closest_resist else ""}
                 </div>""", unsafe_allow_html=True)
 
         # حفظ في السجل
