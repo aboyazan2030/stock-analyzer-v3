@@ -609,8 +609,8 @@ def generate_ai_analysis(symbol, price, currency, score, verdict_text, signals, 
 • RSI(14): {rsi_v:.1f} — {'⚠️ تشبع شرائي' if rsi_v > 70 else '✅ تشبع بيعي' if rsi_v < 30 else 'محايد'}
 • MACD Histogram: {macd_v:.4f} ({'زخم صاعد ✅' if macd_v > 0 else 'زخم هابط ⚠️'})
 • SMA20: {f"{s20:.3f}" if s20 else "—"} | SMA50: {f"{s50:.3f}" if s50 else "—"}
-• المقاومة الأولى: {resistance[0]:.3f if resistance else "—"}
-• الدعم الأول: {support[0]:.3f if support else "—"}
+• المقاومة الأولى: {f"{resistance[0]:.3f}" if resistance else "—"}
+• الدعم الأول: {f"{support[0]:.3f}" if support else "—"}
 • الإشارات: {", ".join([f"{k}: {v[0]}" for k, v in list(signals.items())[:5]])}
 
 ═══ التوصية والأخبار ═══
@@ -1039,19 +1039,19 @@ if nav == "🔍 تحليل":
             with fv_cols[0]:
                 graham = fair_val.get('graham')
                 st.markdown(f"""<div class="metric-card">
-                  <div class="metric-val" style="color:#bc8cff">{graham:.3f if graham else '—'}</div>
+                  <div class="metric-val" style="color:#bc8cff">{f"{graham:.3f}" if graham else "—"}</div>
                   <div class="metric-lbl">Graham Number</div>
                 </div>""", unsafe_allow_html=True)
             with fv_cols[1]:
                 fair_pe = fair_val.get('fair_pe')
                 st.markdown(f"""<div class="metric-card">
-                  <div class="metric-val" style="color:#58a6ff">{fair_pe:.3f if fair_pe else '—'}</div>
+                  <div class="metric-val" style="color:#58a6ff">{f"{fair_pe:.3f}" if fair_pe else "—"}</div>
                   <div class="metric-lbl">قيمة P/E العادلة</div>
                 </div>""", unsafe_allow_html=True)
             with fv_cols[2]:
                 avg_fair = fair_val.get('avg_fair')
                 st.markdown(f"""<div class="metric-card">
-                  <div class="metric-val" style="color:#d29922">{avg_fair:.3f if avg_fair else '—'}</div>
+                  <div class="metric-val" style="color:#d29922">{f"{avg_fair:.3f}" if avg_fair else "—"}</div>
                   <div class="metric-lbl">متوسط السعر العادل</div>
                 </div>""", unsafe_allow_html=True)
             with fv_cols[3]:
@@ -1313,9 +1313,9 @@ if nav == "🔍 تحليل":
                 st.markdown(f"""
                 <div class="ai-box">
                   <strong>📊 ملخص فيبوناتشي:</strong><br>
-                  {'أقرب دعم فيبوناتشي: <strong style="color:#3fb950">' + f"{closest_support:.3f}" + '</strong> — ' + f"({(closest_support-curr_p)/curr_p*100:+.1f}%)" if closest_support else ""}
+                  {'أقرب دعم فيبوناتشي: <strong style="color:#3fb950">' + f"{f"{closest_support:.3f}"}" + '</strong> — ' + f"({(closest_support-curr_p)/curr_p*100:+.1f}%)" if closest_support else ""}
                   {"<br>" if closest_support and closest_resist else ""}
-                  {'أقرب مقاومة فيبوناتشي: <strong style="color:#f85149">' + f"{closest_resist:.3f}" + '</strong> — ' + f"({(closest_resist-curr_p)/curr_p*100:+.1f}%)" if closest_resist else ""}
+                  {'أقرب مقاومة فيبوناتشي: <strong style="color:#f85149">' + f"{f"{closest_resist:.3f}"}" + '</strong> — ' + f"({(closest_resist-curr_p)/curr_p*100:+.1f}%)" if closest_resist else ""}
                 </div>""", unsafe_allow_html=True)
 
         # حفظ في السجل
