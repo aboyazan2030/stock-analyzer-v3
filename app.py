@@ -505,14 +505,24 @@ def generate_signals(df, tech):
     t2=round(resistance[1],3) if len(resistance)>1 else round(curr*1.10,3)
     t3=round(curr*1.15,3)
     rr=round((t2-curr)/(curr-stop_loss),1) if curr>stop_loss else 1.0
-    try:
-        dist_t1=round((t1-curr)/curr*100,1) if curr and curr!=0 else 1.0
-    except: dist_t1=1.0
-    try:
-        dist_t2=round((t2-curr)/curr*100,1) if curr and curr!=0 else 2.0
-    except: dist_t2=2.0
-    days_t1=max(3, int(abs(dist_t1)*10/3)) if dist_t1 else 10
-    days_t2=max(5, int(abs(dist_t2)*10/3)) if dist_t2 else 20
+    import math as _math
+    def _safe_days(dist, default):
+        try:
+            v = float(dist)
+            if _math.isnan(v) or _math.isinf(v) or v == 0: return default
+            return max(default, int(abs(v) / 0.3))
+        except: return default
+    def _safe_dist(a, b, c):
+        try:
+            if not c or c == 0: return 1.0
+            v = round((a - b) / c * 100, 1)
+            if _math.isnan(v) or _math.isinf(v): return 1.0
+            return v
+        except: return 1.0
+    dist_t1 = _safe_dist(t1, curr, curr)
+    dist_t2 = _safe_dist(t2, curr, curr)
+    days_t1 = _safe_days(dist_t1, 10)
+    days_t2 = _safe_days(dist_t2, 20)
     return signals, score, verdict, {
         "stop_loss":stop_loss,"t1":t1,"t2":t2,"t3":t3,
         "rr":rr,"atr":atr_v,
