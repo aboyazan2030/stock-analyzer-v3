@@ -675,32 +675,117 @@ def build_chart(df, tech, symbol, targets, show_vol=True, candles_patterns=None)
             annotation_text=f"🛑 وقف: {sl:.2f}",annotation_position="left",
             annotation_font=dict(color='#f85149',size=10),row=1,col=1)
 
-    # ── علامات الشراء والبيع على الشارت ─────────────────
-    if candles_patterns:
-        last_candle=candles_patterns[0] if candles_patterns else None
-        if last_candle:
-            last_date=df.index[-1]
-            last_high=float(df['High'].iloc[-1])
-            last_low=float(df['Low'].iloc[-1])
-            if last_candle.get('bullish')==True:
-                fig.add_trace(go.Scatter(
-                    x=[last_date],y=[last_low*0.995],mode='markers+text',
-                    marker=dict(symbol='triangle-up',size=15,color='#3fb950'),
-                    text=[f"شراء<br>{last_candle['name']}"],textposition='bottom center',
-                    textfont=dict(color='#3fb950',size=9),name='إشارة شراء',showlegend=False
-                ),row=1,col=1)
-            elif last_candle.get('bullish')==False:
-                fig.add_trace(go.Scatter(
-                    x=[last_date],y=[last_high*1.005],mode='markers+text',
-                    marker=dict(symbol='triangle-down',size=15,color='#f85149'),
-                    text=[f"بيع<br>{last_candle['name']}"],textposition='top center',
-                    textfont=dict(color='#f85149',size=9),name='إشارة بيع',showlegend=False
-                ),row=1,col=1)
+    # ── علامات الشراء والبيع والأهداف على الشارت ──────────
+    last_date = df.index[-1]
+    last_high = float(df['High'].iloc[-1])
+    last_low  = float(df['Low'].iloc[-1])
+    price_now = float(df['Close'].iloc[-1])
 
-    # ── منطقة الدخول المثالية (تظليل) ───────────────────
+    # ── إشارة الشراء/البيع من الشموع ─────────────────────
+    if candles_patterns:
+        last_candle = candles_patterns[0]
+        if last_candle.get('bullish') == True:
+            fig.add_trace(go.Scatter(
+                x=[last_date], y=[last_low * 0.992],
+                mode='markers+text',
+                marker=dict(symbol='triangle-up', size=22, color='#3fb950',
+                    line=dict(color='#ffffff', width=1)),
+                text=[f"🟢 شراء"], textposition='bottom center',
+                textfont=dict(color='#3fb950', size=11, family='Cairo'),
+                name='إشارة شراء', showlegend=True
+            ), row=1, col=1)
+        elif last_candle.get('bullish') == False:
+            fig.add_trace(go.Scatter(
+                x=[last_date], y=[last_high * 1.008],
+                mode='markers+text',
+                marker=dict(symbol='triangle-down', size=22, color='#f85149',
+                    line=dict(color='#ffffff', width=1)),
+                text=[f"🔴 بيع"], textposition='top center',
+                textfont=dict(color='#f85149', size=11, family='Cairo'),
+                name='إشارة بيع', showlegend=True
+            ), row=1, col=1)
+
+    # ── سهم الهدف 1 ───────────────────────────────────────
+    t1 = targets.get('t1')
+    t2 = targets.get('t2')
+    sl = targets.get('stop_loss')
+
+    if t1 and t1 > price_now:
+        # خط أفقي + نص الهدف
+        fig.add_annotation(
+            x=df.index[int(len(df)*0.75)], y=t1,
+            text=f"🎯 هدف 1: {t1:.2f}",
+            showarrow=True, arrowhead=2, arrowsize=1.5,
+            arrowcolor='#58a6ff', arrowwidth=2,
+            ax=0, ay=-35,
+            font=dict(color='#58a6ff', size=11, family='Cairo'),
+            bgcolor='rgba(22,27,34,0.85)', bordercolor='#58a6ff',
+            borderwidth=1, borderpad=4, row=1, col=1
+        )
+
+    if t2 and t2 > price_now:
+        fig.add_annotation(
+            x=df.index[int(len(df)*0.5)], y=t2,
+            text=f"🎯 هدف 2: {t2:.2f}",
+            showarrow=True, arrowhead=2, arrowsize=1.5,
+            arrowcolor='#bc8cff', arrowwidth=2,
+            ax=0, ay=-35,
+            font=dict(color='#bc8cff', size=11, family='Cairo'),
+            bgcolor='rgba(22,27,34,0.85)', bordercolor='#bc8cff',
+            borderwidth=1, borderpad=4, row=1, col=1
+        )
+
+    if sl:
+        fig.add_annotation(
+            x=df.index[int(len(df)*0.6)], y=sl,
+            text=f"🛑 وقف: {sl:.2f}",
+            showarrow=True, arrowhead=2, arrowsize=1.5,
+            arrowcolor='#f85149', arrowwidth=2,
+            ax=0, ay=35,
+            font=dict(color='#f85149', size=11, family='Cairo'),
+            bgcolor='rgba(22,27,34,0.85)', bordercolor='#f85149',
+            borderwidth=1, borderpad=4, row=1, col=1
+        )
+
+    # ── أسهم المقاومة ─────────────────────────────────────
+    for i, r in enumerate(tech['resistance'][:2]):
+        if r:
+            fig.add_annotation(
+                x=df.index[-5], y=r,
+                text=f"⬆️ مقاومة {i+1}: {r:.2f}",
+                showarrow=False,
+                font=dict(color='#f85149', size=10, family='Cairo'),
+                bgcolor='rgba(248,81,73,0.15)', bordercolor='#f85149',
+                borderwidth=1, borderpad=3,
+                xanchor='right', row=1, col=1
+            )
+
+    # ── أسهم الدعم ────────────────────────────────────────
+    for i, s in enumerate(tech['support'][:2]):
+        if s:
+            fig.add_annotation(
+                x=df.index[-5], y=s,
+                text=f"⬇️ دعم {i+1}: {s:.2f}",
+                showarrow=False,
+                font=dict(color='#3fb950', size=10, family='Cairo'),
+                bgcolor='rgba(63,185,80,0.15)', bordercolor='#3fb950',
+                borderwidth=1, borderpad=3,
+                xanchor='right', row=1, col=1
+            )
+
+    # ── منطقة الدخول المثالية (تظليل) ────────────────────
     if tech['support']:
-        s=tech['support'][0]
-        fig.add_hrect(y0=s*0.99,y1=s*1.01,fillcolor='rgba(63,185,80,0.08)',line_width=0,row=1,col=1)
+        s = tech['support'][0]
+        fig.add_hrect(y0=s*0.99, y1=s*1.01,
+            fillcolor='rgba(63,185,80,0.1)', line_width=0, row=1, col=1)
+        fig.add_annotation(
+            x=df.index[int(len(df)*0.15)], y=s,
+            text="✅ منطقة شراء",
+            showarrow=False,
+            font=dict(color='#3fb950', size=10, family='Cairo'),
+            bgcolor='rgba(63,185,80,0.2)', bordercolor='#3fb950',
+            borderwidth=1, borderpad=3, row=1, col=1
+        )
 
     # RSI
     fig.add_trace(go.Scatter(x=df.index,y=tech['rsi'],name='RSI',line=dict(color='#58a6ff',width=2)),row=2,col=1)
