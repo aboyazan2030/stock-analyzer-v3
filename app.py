@@ -911,7 +911,7 @@ def _smart_report(symbol,price,currency,score,verdict_text,signals,tech,info,new
 ### 🛑 وقف الخسارة: {sl:.3f} ({(sl-price)/price*100:+.1f}%)
 
 ### السيناريو الإيجابي 🟢 (احتمالية {65 if score>=60 else 45}%)
-السعر يكسر {t1p:.3f} ويصل {t2p:.3f} خلال {max(5,int(abs((t2p-price)/price*100/0.3)))} جلسة.
+السعر يكسر {t1p:.3f} ويصل {t2p:.3f}.
 
 ### السيناريو السلبي 🔴 (احتمالية {35 if score>=60 else 55}%)
 الكسر تحت {sl:.3f} قد يصل {round(sl*0.97,3):.3f}.
