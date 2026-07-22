@@ -725,18 +725,27 @@ def build_chart(df, tech, symbol, targets, show_vol=True, candles_patterns=None)
         title=dict(text=summary_text,font=dict(color='#8b949e',size=11,family='Cairo'),x=0.5),
         paper_bgcolor='#0d1117',plot_bgcolor='#0d1117',
         font=dict(color='#e6edf3',family='Cairo'),
-        height=800,margin=dict(l=10,r=80,t=50,b=10),
-        legend=dict(orientation='h',y=1.06,x=0,bgcolor='rgba(22,27,34,0.9)',bordercolor='#30363d',borderwidth=1,font=dict(size=9)),
+        height=850,margin=dict(l=5,r=85,t=55,b=10),
+        legend=dict(orientation='h',y=1.07,x=0,bgcolor='rgba(22,27,34,0.9)',
+            bordercolor='#30363d',borderwidth=1,font=dict(size=10),
+            itemwidth=40,tracegroupgap=0),
         xaxis_rangeslider_visible=False,hovermode='x unified',
+        # تحسين الشموع للموبايل
+        newshape=dict(line_color='#58a6ff'),
     )
     for i in range(1,rows+1):
         ax='xaxis' if i==1 else f'xaxis{i}'
         ya='yaxis' if i==1 else f'yaxis{i}'
         fig.update_layout(**{
-            ax:dict(gridcolor='#21262d',gridwidth=0.5,showgrid=True,zeroline=False,tickfont=dict(size=9)),
-            ya:dict(gridcolor='#21262d',gridwidth=0.5,showgrid=True,zeroline=False,side='right',tickfont=dict(size=9)),
+            ax:dict(gridcolor='#21262d',gridwidth=0.5,showgrid=True,zeroline=False,
+                tickfont=dict(size=10),showspikes=True,spikecolor='#58a6ff',spikethickness=1),
+            ya:dict(gridcolor='#21262d',gridwidth=0.5,showgrid=True,zeroline=False,
+                side='right',tickfont=dict(size=10),showspikes=True,spikecolor='#58a6ff'),
         })
     fig.update_layout(yaxis2=dict(range=[0,100]))
+    # تكبير الشموع
+    fig.update_traces(selector=dict(type='candlestick'),
+        increasing_line_width=2, decreasing_line_width=2)
     return fig
 
 # ═══════════════════════════════════════════════════════
@@ -926,7 +935,7 @@ if nav=="🔍 تحليل":
                 <span class="badge b-blue">مصدر: {source}</span>
                 <span class="badge {'b-green' if score>=60 else 'b-red' if score<40 else 'b-yellow'}" style="margin-right:.4rem">درجة: {score}/100</span>
                 <span class="badge b-purple" style="margin-right:.4rem">ثقة: {confidence}%</span>
-                <span class="badge b-orange" style="margin-right:.4rem" title="{trend_info['label']}">{trend_info['label']}</span>
+                <span class="badge b-orange" style="margin-right:.4rem">{trend_info['label']}</span>
               </div>
             </div>
             <div style="text-align:left">
@@ -951,7 +960,7 @@ if nav=="🔍 تحليل":
             ("الاتجاه",trend_info['label'].split()[0],trend_info['color']),
             ("التجميع",accum_info['phase'].split()[0],accum_info['color']),
             ("vs القطاع",sector_cmp['vs_label'][0].split()[0],sector_cmp['vs_label'][1]),
-            ("Smart Money","✅ نعم" if accum_info['smart_money'] else "❌ لا",'#3fb950' if accum_info['smart_money'] else '#8b949e'),
+            ("سيولة ذكية","✅ مرتفعة" if accum_info['smart_money'] else "طبيعية",'#3fb950' if accum_info['smart_money'] else '#8b949e'),
         ]
         for col,(lbl,val,clr) in zip(cols6,mets):
             with col:
