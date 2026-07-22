@@ -1299,7 +1299,8 @@ if nav=="🔍 تحليل":
                 for lbl,key in [("EMA9","ema9"),("SMA20","sma20"),("SMA50","sma50"),("SMA200","sma200"),("BB Upper","bb_upper"),("BB Lower","bb_lower"),("ATR(14)","atr")]:
                     v=safe(tech[key].iloc[-1])
                     clr="#3fb950" if v and price>v else "#f85149" if v and price<v else "#8b949e"
-                    st.markdown(f"**{lbl}:** <span style='color:{clr}'>`{v:.3f if v else '—'}`</span>",unsafe_allow_html=True)
+                    v_str=f"{v:.3f}" if v is not None else "—"
+                    st.markdown(f"**{lbl}:** <span style='color:{clr}'>`{v_str}`</span>",unsafe_allow_html=True)
 
             # الاتجاه التفصيلي
             st.markdown("### 📊 تحليل الاتجاه")
