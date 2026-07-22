@@ -1292,7 +1292,8 @@ if nav=="🔍 تحليل":
                 st.markdown("**المؤشرات الفنية**")
                 for lbl,key in [("RSI(14)","rsi"),("MACD","macd"),("MACD Signal","macd_sig"),("MACD Hist","macd_hist"),("Stoch K","stoch_k"),("Stoch D","stoch_d")]:
                     v=safe(tech[key].iloc[-1])
-                    st.markdown(f"**{lbl}:** `{v:.4f if v else '—'}`")
+                    v_str = f"{v:.4f}" if v is not None else "—"
+                    st.markdown(f"**{lbl}:** `{v_str}`")
             with c2:
                 st.markdown("**المتوسطات المتحركة**")
                 for lbl,key in [("EMA9","ema9"),("SMA20","sma20"),("SMA50","sma50"),("SMA200","sma200"),("BB Upper","bb_upper"),("BB Lower","bb_lower"),("ATR(14)","atr")]:
